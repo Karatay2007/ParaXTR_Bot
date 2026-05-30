@@ -1,3 +1,4 @@
+print("Bot çalışmaya başladı...")
 import asyncio
 from telethon import TelegramClient
 import random

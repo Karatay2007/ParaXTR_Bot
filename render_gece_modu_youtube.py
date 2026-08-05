@@ -7,11 +7,10 @@ import math
 import subprocess
 import sys
 import wave
-from array import array
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageDraw, ImageFilter, ImageFont
+from PIL import Image, ImageDraw, ImageFont
 
 W, H = 1080, 1920
 FPS = 24
@@ -26,56 +25,98 @@ ART = Path("/opt/cursor/artifacts")
 CREAM = (232, 220, 200)
 CREAM2 = (210, 195, 170)
 WHITE = (255, 255, 255)
-MUTED = (180, 175, 165)
-DIM = (140, 135, 128)
+MUTED = (168, 162, 152)
 PROGRESS_BG = (55, 50, 45)
-PILL_BG = (18, 16, 14, 210)
 
-# Timed lyric lines (start, end, text). Hand-tuned to Gece Modu structure.
+# Layout — lyrics just above EQ (not on face); more cover; tight credits
+LYRIC_Y = 1185
+EQ_Y = 1280
+CREDIT_TOP = 1480
+ARTIST_Y = 1535
+TITLE_Y = 1595
+CREDIT_Y = 1645
+PROGRESS_Y = 1740
+
+# Whisper-synced cues (cleaned lyrics, sentence case). (start, end, line)
 LYRICS: list[tuple[float, float, str]] = [
-    (1.8, 4.0, "Gece modu açık"),
-    (4.0, 6.2, "Sessizlik ağır"),
-    (6.2, 8.6, "Kalp ritmi bozuk"),
-    (8.6, 11.2, "Sokaklar şahit"),
-    (11.2, 13.8, "Aynada bir yüz var"),
-    (13.8, 16.2, "Tanımaz oldum"),
-    (16.2, 18.8, "Kimse sormadı"),
-    (18.8, 21.5, "İyi misin diye"),
-    (22.0, 25.0, "Dost sandıklarım bir bildi"),
-    (25.0, 27.5, "Telefon suskun"),
-    (27.5, 30.0, "Mesajlar soğuk"),
-    (30.0, 34.0, "İçeride fırtına"),
-    (34.0, 37.5, "Dışarıda durgun"),
-    (37.5, 41.5, "Ben bu gecede kaybolmadım"),
-    (41.5, 45.5, "Sadece kimseye bakmadım"),
-    (46.0, 48.5, "Gece modu"),
-    (48.5, 51.0, "Kalbim kapalı"),
-    (51.0, 53.8, "Işıklar yanıyor"),
-    (53.8, 56.5, "İçim karanlık"),
-    (56.5, 59.5, "Bu sokak benim"),
-    (59.5, 63.0, "Bu dert benim malım"),
-    (63.0, 66.0, "Ben ayaktayım"),
-    (66.0, 70.0, "Yeter bu kadar olsun"),
-    (71.0, 74.0, "Eski defterler"),
-    (74.0, 77.0, "Yalnız sayfalar"),
-    (77.0, 80.5, "Ucuz sözler"),
-    (80.5, 84.0, "Bir bakış yeter"),
-    (84.5, 88.0, "Gece modu"),
-    (88.0, 91.0, "Kalbim kapalı"),
-    (91.0, 94.0, "Işıklar yanıyor"),
-    (94.0, 97.0, "İçim karanlık"),
-    (97.5, 101.0, "Bu sokak benim"),
-    (101.0, 105.0, "Bu dert benim malım"),
-    (105.0, 108.5, "Ben ayaktayım"),
-    (108.5, 113.0, "Yeter bu kadar olsun"),
-    (114.0, 117.5, "Gece modu açık"),
-    (117.5, 121.0, "Sessizlik ağır"),
-    (121.0, 124.5, "Gece modu"),
-    (124.5, 128.0, "Kalbim kapalı"),
-    (128.0, 132.0, "Işıklar yanıyor"),
-    (132.0, 136.0, "Bu sokak benim"),
-    (136.0, 140.5, "Bu dert benim malım"),
+    (3.36, 6.20, "Gece Modu açık"),
+    (6.20, 9.10, "Sessizlik ağır"),
+    (9.10, 12.00, "Kalp ritmi bozuk"),
+    (12.00, 15.02, "Sokaklar şahit"),
+    (15.02, 16.70, "Aynada bir yüz var"),
+    (16.70, 18.34, "Tanımaz oldum"),
+    (18.34, 20.00, "Dertler cebimde"),
+    (20.00, 21.56, "Gülüşüm borçtu"),
+    (21.56, 23.20, "Kimse sormadı"),
+    (23.20, 24.78, "İyi misin diye"),
+    (24.78, 26.40, "Herkes uzaktan"),
+    (26.40, 28.00, "Herkes bir hikaye"),
+    (28.36, 29.40, "Adım adım yürüdüm"),
+    (29.40, 30.40, "Yüzüm silindi"),
+    (30.40, 32.56, "Dost sandıklarım gerildi"),
+    (32.56, 34.00, "Telefon suskun"),
+    (34.00, 35.60, "Mesajlar soğuk"),
+    (35.60, 37.30, "İçeride fırtına"),
+    (37.30, 39.06, "Dışarıda durgun"),
+    (40.36, 43.46, "Ben bu gecede kaybolmadım"),
+    (43.46, 45.82, "Sadece kimse bakmadı"),
+    # Nakarat
+    (46.36, 47.60, "Gece Modu"),
+    (47.60, 48.80, "Kalbim kapalı"),
+    (48.80, 50.50, "Işıklar yanıyor"),
+    (50.50, 52.30, "İçim karanlık"),
+    (52.30, 53.80, "Kimseyi anlatmam"),
+    (53.80, 55.36, "Tutmam hesabı"),
+    (55.61, 57.40, "Bu sokak benim"),
+    (57.40, 59.47, "Bu dert benim malım"),
+    (59.47, 61.00, "Gece Modu"),
+    (61.00, 62.43, "Sesim tok"),
+    (62.43, 64.20, "Rüyalar pahalı"),
+    (64.20, 65.91, "Gerçek ucuz"),
+    (65.91, 67.47, "Ne gelir ne gider"),
+    (67.47, 69.00, "Hepsi bir oyun"),
+    (69.00, 70.51, "Ben ayaktayım"),
+    (70.51, 73.01, "Yeter bu kadar olsun"),
+    # Bridge
+    (73.61, 75.00, "Eski defterler"),
+    (75.00, 76.05, "Yanmış sayfalar"),
+    (76.05, 77.83, "Yeminler ucuz sözler"),
+    (77.83, 79.20, "Bir bakış yeter"),
+    (79.20, 80.41, "Her şey bozulur"),
+    (80.41, 82.19, "Güven bir kere gider"),
+    (83.19, 86.51, "Bir daha gelmez"),
+    (86.51, 87.70, "Param yoktu"),
+    (87.70, 88.77, "Gururum vardı"),
+    (88.77, 90.59, "İkisi de yarım kaldı"),
+    (90.59, 92.37, "İnanma sakın"),
+    (92.37, 94.31, "O gülüş maske"),
+    (94.31, 98.13, "Ben bu gecede kaybolmadım"),
+    (98.13, 100.37, "Sadece kimse bakmadı"),
+    # Nakarat 2
+    (100.37, 101.80, "Gece Modu"),
+    (101.80, 103.37, "Kalbim kapalı"),
+    (103.37, 104.80, "Işıklar yanıyor"),
+    (104.80, 106.19, "İçim karanlık"),
+    (106.79, 108.50, "Kimseyi anlatmam"),
+    (108.50, 110.37, "Tutmam hesabı"),
+    (110.37, 112.00, "Bu sokak benim"),
+    (112.00, 113.71, "Bu dert benim malım"),
+    (114.37, 115.50, "Gece Modu"),
+    (115.50, 116.85, "Sesim tok"),
+    (117.37, 119.00, "Rüyalar pahalı"),
+    (119.00, 120.35, "Gerçek ucuz"),
+    (120.35, 121.79, "Ne gelir ne gider"),
+    (122.37, 123.70, "Hepsi bir oyun"),
+    (123.70, 124.91, "Ben ayaktayım"),
+    (124.91, 127.35, "Yeter bu kadar olsun"),
+    (127.35, 130.00, "Gece Modu"),
+    (130.00, 132.53, "Kalbim kapalı"),
+    (134.87, 137.50, "Ayaktayım"),
 ]
+
+# Shorts = first nakarat (with short pre-hook)
+SHORT_T0 = 40.0
+SHORT_T1 = 73.2
 
 
 def font(name: str, size: int) -> ImageFont.FreeTypeFont:
@@ -108,58 +149,51 @@ def ensure_wav() -> tuple[np.ndarray, int]:
 
 def cover_base() -> Image.Image:
     img = Image.open(COVER).convert("RGB")
-    # Cover is square — scale to fill vertical 9:16, center crop
-    scale = max(W / img.width, H / img.height)
+    # Fill 9:16 — bias crop upward so face sits higher, room for UI below
+    scale = max(W / img.width, H / img.height) * 1.08
     nw, nh = int(img.width * scale), int(img.height * scale)
     img = img.resize((nw, nh), Image.Resampling.LANCZOS)
     left = (nw - W) // 2
-    top = (nh - H) // 2
+    # Prefer upper portion of portrait
+    top = max(0, int((nh - H) * 0.15))
+    if top + H > nh:
+        top = nh - H
     img = img.crop((left, top, left + W, top + H))
-    # Soft vignette toward bottom so credits read cleanly
+
     overlay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(overlay)
-    for i, a in enumerate(range(0, 200, 8)):
-        y0 = H - 520 + i * 8
-        d.rectangle((0, y0, W, H), fill=(0, 0, 0, min(230, a + 40)))
-    # Solid credit plate
-    d.rectangle((0, H - 340, W, H), fill=(0, 0, 0, 255))
-    img = Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGB")
-    return img
+    # Soft fade into compact credit plate — keep more of the cover visible
+    for i in range(18):
+        a = int(12 + i * 10)
+        y0 = CREDIT_TOP - 90 + i * 5
+        d.rectangle((0, y0, W, H), fill=(0, 0, 0, min(240, a)))
+    d.rectangle((0, CREDIT_TOP, W, H), fill=(0, 0, 0, 255))
+    return Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGB")
 
 
 def draw_static_credits(base: Image.Image) -> Image.Image:
     img = base.copy()
     d = ImageDraw.Draw(img)
-    f_artist = font("Inter-Bold.ttf", 54)
-    f_title = font("Inter-Medium.ttf", 34)
-    f_credit = font("Inter-Regular.ttf", 26)
-
-    artist = "Arven Solé"
-    title = "Gece Modu"
-    credit = "Söz-Müzik: Arven Solé"
-
-    y_artist = H - 250
-    y_title = H - 185
-    y_credit = H - 135
+    f_artist = font("Inter-Bold.ttf", 48)
+    f_title = font("Inter-SemiBold.ttf", 30)
+    f_credit = font("Inter-Regular.ttf", 22)
 
     def center_text(text, fnt, y, fill):
         bbox = d.textbbox((0, 0), text, font=fnt)
         tw = bbox[2] - bbox[0]
         d.text(((W - tw) // 2, y), text, font=fnt, fill=fill)
 
-    center_text(artist, f_artist, y_artist, WHITE)
-    center_text(title, f_title, y_title, CREAM)
-    center_text(credit, f_credit, y_credit, MUTED)
+    center_text("Arven Solé", f_artist, ARTIST_Y, WHITE)
+    center_text("Gece Modu", f_title, TITLE_Y, CREAM)
+    center_text("Söz-Müzik: Arven Solé", f_credit, CREDIT_Y, MUTED)
     return img
 
 
-def band_energies(chunk: np.ndarray, n_bars: int = 26) -> np.ndarray:
+def band_energies(chunk: np.ndarray, n_bars: int = 24) -> np.ndarray:
     if len(chunk) < 64:
         return np.zeros(n_bars, dtype=np.float32)
-    # Windowed FFT
     window = np.hanning(len(chunk))
     spec = np.abs(np.fft.rfft(chunk * window))
-    # Log-frequency grouping
     freqs = np.linspace(0, 1, len(spec))
     edges = np.logspace(math.log10(0.02), math.log10(1.0), n_bars + 1)
     vals = np.zeros(n_bars, dtype=np.float32)
@@ -167,92 +201,97 @@ def band_energies(chunk: np.ndarray, n_bars: int = 26) -> np.ndarray:
         mask = (freqs >= edges[i]) & (freqs < edges[i + 1])
         if mask.any():
             vals[i] = float(spec[mask].mean())
-    # Normalize with soft compression
     peak = vals.max()
     if peak > 1e-6:
         vals = vals / peak
-    vals = np.power(vals, 0.65)
+    vals = np.power(np.clip(vals, 0, 1), 0.6)
+    # Keep a living floor so bars never look dead
+    vals = 0.12 + 0.88 * vals
     return vals
 
 
 def draw_eq(draw: ImageDraw.ImageDraw, vals: np.ndarray, progress: float) -> None:
     n = len(vals)
-    pill_w, pill_h = 820, 118
+    pill_w, pill_h = 760, 100
     pill_x = (W - pill_w) // 2
-    pill_y = H - 420
-    # Rounded pill background
+    pill_y = EQ_Y
     draw.rounded_rectangle(
         (pill_x, pill_y, pill_x + pill_w, pill_y + pill_h),
-        radius=28,
-        fill=(22, 20, 18),
-        outline=(40, 36, 32),
+        radius=24,
+        fill=(18, 16, 14),
+        outline=(38, 34, 30),
         width=2,
     )
-    margin_x = 36
-    margin_y = 22
+    margin_x, margin_y = 32, 18
     usable_w = pill_w - 2 * margin_x
     usable_h = pill_h - 2 * margin_y
-    gap = 8
+    gap = 7
     bar_w = max(8, int((usable_w - gap * (n - 1)) / n))
     total = n * bar_w + (n - 1) * gap
     start_x = pill_x + margin_x + (usable_w - total) // 2
     base_y = pill_y + pill_h - margin_y
     for i, v in enumerate(vals):
-        h = int(14 + v * (usable_h - 14))
+        h = int(12 + float(v) * (usable_h - 12))
         x0 = start_x + i * (bar_w + gap)
         y0 = base_y - h
         color = CREAM if i % 3 != 2 else CREAM2
-        draw.rounded_rectangle((x0, y0, x0 + bar_w, base_y), radius=bar_w // 2, fill=color)
+        draw.rounded_rectangle(
+            (x0, y0, x0 + bar_w, base_y), radius=bar_w // 2, fill=color
+        )
 
-    # Progress bar
-    bar_y = H - 58
-    bar_x0, bar_x1 = 120, W - 120
-    draw.line((bar_x0, bar_y, bar_x1, bar_y), fill=PROGRESS_BG, width=4)
+    bar_x0, bar_x1 = 160, W - 160
+    draw.line((bar_x0, PROGRESS_Y, bar_x1, PROGRESS_Y), fill=PROGRESS_BG, width=3)
     px = bar_x0 + int((bar_x1 - bar_x0) * progress)
-    draw.line((bar_x0, bar_y, px, bar_y), fill=CREAM, width=4)
-    draw.ellipse((px - 7, bar_y - 7, px + 7, bar_y + 7), fill=CREAM)
+    draw.line((bar_x0, PROGRESS_Y, px, PROGRESS_Y), fill=CREAM, width=3)
+    draw.ellipse((px - 6, PROGRESS_Y - 6, px + 6, PROGRESS_Y + 6), fill=CREAM)
 
 
-def lyric_at(t: float) -> tuple[str | None, str | None]:
-    """Return (current, next) lyric lines for time t."""
-    cur = None
-    nxt = None
-    for i, (s, e, text) in enumerate(LYRICS):
+def lyric_at(t: float) -> tuple[str | None, float, float]:
+    """Return (text, start, end) for active lyric, else (None,0,0)."""
+    for s, e, text in LYRICS:
         if s <= t < e:
-            cur = text
-            if i + 1 < len(LYRICS):
-                nxt = LYRICS[i + 1][2]
-            break
-        if t < s:
-            nxt = text
-            break
-    return cur, nxt
+            return text, s, e
+    return None, 0.0, 0.0
 
 
 def draw_lyrics(img: Image.Image, t: float) -> None:
-    cur, nxt = lyric_at(t)
+    """Modern karaoke: single line above EQ, soft shadow, full cream rule."""
+    cur, s, e = lyric_at(t)
     if not cur:
         return
-    d = ImageDraw.Draw(img)
-    f_cur = font("Inter-Bold.ttf", 48)
-    f_next = font("Inter-Regular.ttf", 28)
 
-    # Soft dark plate behind lyrics for readability
-    plate = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    pd = ImageDraw.Draw(plate)
-    cy = H - 560
-    pd.rounded_rectangle((80, cy - 70, W - 80, cy + 90), radius=24, fill=(0, 0, 0, 140))
-    img.alpha_composite(plate)
+    fade = 0.18
+    alpha = 1.0
+    if t - s < fade:
+        alpha = (t - s) / fade
+    elif e - t < fade:
+        alpha = (e - t) / fade
+    alpha = max(0.0, min(1.0, alpha))
 
-    d = ImageDraw.Draw(img)
-    bbox = d.textbbox((0, 0), cur, font=f_cur)
+    f_cur = font("Inter-Bold.ttf", 44)
+    shadow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    sd = ImageDraw.Draw(shadow)
+    bbox = sd.textbbox((0, 0), cur, font=f_cur)
     tw = bbox[2] - bbox[0]
-    d.text(((W - tw) // 2, cy - 30), cur, font=f_cur, fill=WHITE)
+    th = bbox[3] - bbox[1]
+    x = (W - tw) // 2
+    y = LYRIC_Y
+    sd.text((x + 2, y + 3), cur, font=f_cur, fill=(0, 0, 0, int(180 * alpha)))
+    img.alpha_composite(shadow)
 
-    if nxt:
-        bbox2 = d.textbbox((0, 0), nxt, font=f_next)
-        tw2 = bbox2[2] - bbox2[0]
-        d.text(((W - tw2) // 2, cy + 40), nxt, font=f_next, fill=DIM)
+    text_layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    td = ImageDraw.Draw(text_layer)
+    td.text((x, y), cur, font=f_cur, fill=(255, 255, 255, int(255 * alpha)))
+
+    # Full-width cream rule under the line (not progressive — cleaner)
+    ly = y + th + 12
+    pad = 8
+    td.line(
+        (x - pad, ly, x + tw + pad, ly),
+        fill=(*CREAM, int(200 * alpha)),
+        width=2,
+    )
+    img.alpha_composite(text_layer)
 
 
 def render(out_path: Path, t0: float = 0.0, t1: float | None = None) -> None:
@@ -262,12 +301,14 @@ def render(out_path: Path, t0: float = 0.0, t1: float | None = None) -> None:
         t1 = duration
     t1 = min(t1, duration)
     n_frames = int(round((t1 - t0) * FPS))
-    print(f"Rendering {out_path.name}: {t0:.1f}-{t1:.1f}s → {n_frames} frames @ {FPS}fps", flush=True)
+    print(
+        f"Rendering {out_path.name}: {t0:.1f}-{t1:.1f}s → {n_frames} frames @ {FPS}fps",
+        flush=True,
+    )
 
     base = draw_static_credits(cover_base())
     hop = rate // FPS
-    n_bars = 26
-    # Smooth EQ with simple EMA
+    n_bars = 24
     smooth = np.zeros(n_bars, dtype=np.float32)
 
     cmd = [
@@ -325,13 +366,14 @@ def render(out_path: Path, t0: float = 0.0, t1: float | None = None) -> None:
             frame = base.copy().convert("RGBA")
             draw_lyrics(frame, t)
             d = ImageDraw.Draw(frame)
-            progress = (t - t0) / max(0.001, t1 - t0)
-            # Absolute progress for full track feel on shorts too
-            abs_progress = t / duration
-            draw_eq(d, smooth, abs_progress)
+            # Shorts: progress within the cut; full: whole track
+            if t0 > 0.5 or (t1 is not None and t1 < duration - 1):
+                progress = (t - t0) / max(0.001, t1 - t0)
+            else:
+                progress = t / duration
+            draw_eq(d, smooth, progress)
 
-            rgb = frame.convert("RGB")
-            proc.stdin.write(rgb.tobytes())
+            proc.stdin.write(frame.convert("RGB").tobytes())
             if fi % 48 == 0:
                 print(f"  frame {fi}/{n_frames} ({100 * fi / n_frames:.0f}%)", flush=True)
     finally:
@@ -346,10 +388,8 @@ def render(out_path: Path, t0: float = 0.0, t1: float | None = None) -> None:
 
 def main() -> None:
     ART.mkdir(parents=True, exist_ok=True)
-    # Full official lyric video
     render(OUT_FULL, 0.0, None)
-    # Shorts: intro → first chorus (~55s) — discovery cut
-    render(OUT_SHORT, 0.0, 55.0)
+    render(OUT_SHORT, SHORT_T0, SHORT_T1)
     for p in (OUT_FULL, OUT_SHORT):
         dest = ART / p.name
         dest.write_bytes(p.read_bytes())

@@ -44,14 +44,15 @@ ARTIST = "ARVEN SOLÉ"
 CREDIT = "SÖZ · MÜZİK   ARVEN SOLÉ"
 TOP_BANNER = "DEVAMI YAYINDA"
 
-# Layout — banner lower; CTA row mid; lyrics a bit smaller
-BANNER_Y = 290
-CTA_Y = 520
-LYRIC_Y = 820
-EQ_Y = 930
+# Layout — wide banner; lyrics mid; CTA under Söz-Müzik
+BANNER_Y = 250
+LYRIC_Y = 780
+EQ_Y = 890
 EQ_H = 72
-CREDIT_TOP = 1280
-PROGRESS_Y = 1765
+CREDIT_TOP = 1220
+CTA_Y = 1585
+PROGRESS_Y = 1785
+LIKE_BLUE = (66, 133, 244)
 
 # Hottest chorus 2
 SHORT_T0 = 109.2
@@ -253,63 +254,74 @@ def draw_eq(draw: ImageDraw.ImageDraw, vals: np.ndarray, progress: float) -> Non
 
 
 def _draw_hand(d: ImageDraw.ImageDraw, tip_x: int, tip_y: int, scale: float = 1.0) -> None:
-    """Simple white pointing-hand cursor (index finger up-left toward tip)."""
+    """White cursor hand pointing at tip (reference style)."""
     s = scale
-    # palm
-    pts = [
-        (tip_x + int(8 * s), tip_y + int(18 * s)),
-        (tip_x + int(28 * s), tip_y + int(22 * s)),
-        (tip_x + int(34 * s), tip_y + int(48 * s)),
-        (tip_x + int(6 * s), tip_y + int(52 * s)),
+    d.rounded_rectangle(
+        (tip_x - int(5 * s), tip_y, tip_x + int(5 * s), tip_y + int(34 * s)),
+        radius=4,
+        fill=(255, 255, 255, 255),
+        outline=(30, 30, 30, 255),
+        width=2,
+    )
+    palm = [
+        (tip_x - int(6 * s), tip_y + int(28 * s)),
+        (tip_x + int(22 * s), tip_y + int(30 * s)),
+        (tip_x + int(26 * s), tip_y + int(58 * s)),
+        (tip_x - int(10 * s), tip_y + int(56 * s)),
     ]
-    d.polygon(pts, fill=(255, 255, 255, 245))
-    d.line(pts + [pts[0]], fill=(40, 40, 40, 220), width=2)
-    # index finger toward tip
-    d.line(
-        (tip_x + int(10 * s), tip_y + int(22 * s), tip_x, tip_y),
-        fill=(255, 255, 255, 245),
-        width=max(3, int(7 * s)),
-    )
-    d.ellipse(
-        (tip_x - int(5 * s), tip_y - int(5 * s), tip_x + int(5 * s), tip_y + int(5 * s)),
-        fill=(255, 255, 255, 245),
-        outline=(40, 40, 40, 200),
-    )
+    d.polygon(palm, fill=(255, 255, 255, 255))
+    d.line(palm + [palm[0]], fill=(30, 30, 30, 255), width=2)
+    for ox in (8, 14, 20):
+        d.rounded_rectangle(
+            (
+                tip_x + int(ox * s),
+                tip_y + int(32 * s),
+                tip_x + int((ox + 6) * s),
+                tip_y + int(48 * s),
+            ),
+            radius=3,
+            fill=(255, 255, 255, 255),
+            outline=(30, 30, 30, 255),
+            width=1,
+        )
 
 
 def _draw_thumb(d: ImageDraw.ImageDraw, cx: int, cy: int, r: int, active: bool) -> None:
-    fill = (245, 245, 245, 255) if not active else (255, 255, 255, 255)
-    d.ellipse((cx - r, cy - r, cx + r, cy + r), fill=fill, outline=(210, 210, 210, 255), width=3)
-    # thumbs-up shape (simplified)
-    ink = (90, 90, 90, 255)
-    # fist block
-    d.rounded_rectangle(
-        (cx - 14, cy - 2, cx + 12, cy + 18),
-        radius=5,
-        fill=ink,
+    """White circle + light-blue thumbs-up (matches reference)."""
+    d.ellipse(
+        (cx - r, cy - r, cx + r, cy + r),
+        fill=(255, 255, 255, 255),
+        outline=(230, 230, 230, 255),
+        width=2,
     )
-    # thumb
-    d.rounded_rectangle(
-        (cx - 4, cy - 22, cx + 10, cy + 2),
-        radius=6,
-        fill=ink,
-    )
+    if active:
+        d.ellipse((cx - r - 4, cy - r - 4, cx + r + 4, cy + r + 4), outline=(*LIKE_BLUE, 180), width=3)
+    blue = (*LIKE_BLUE, 255)
+    d.rounded_rectangle((cx - 13, cy - 1, cx + 14, cy + 18), radius=5, fill=blue)
+    d.rounded_rectangle((cx - 2, cy - 22, cx + 12, cy + 4), radius=7, fill=blue)
+    for ky in (cy + 4, cy + 10):
+        d.line((cx - 8, ky, cx + 9, ky), fill=(255, 255, 255, 90), width=1)
 
 
 def _draw_bell(d: ImageDraw.ImageDraw, cx: int, cy: int, r: int, active: bool) -> None:
-    fill = (245, 245, 245, 255) if not active else (255, 255, 255, 255)
-    d.ellipse((cx - r, cy - r, cx + r, cy + r), fill=fill, outline=(210, 210, 210, 255), width=3)
-    ink = (90, 90, 90, 255)
-    # bell body
-    d.pieslice((cx - 16, cy - 14, cx + 16, cy + 16), 200, 340, fill=ink)
-    d.ellipse((cx - 16, cy - 2, cx + 16, cy + 18), fill=ink)
-    d.ellipse((cx - 3, cy - 20, cx + 3, cy - 12), fill=ink)
-    d.ellipse((cx - 4, cy + 16, cx + 4, cy + 24), fill=ink)
+    """White circle + clean grey bell."""
+    d.ellipse(
+        (cx - r, cy - r, cx + r, cy + r),
+        fill=(255, 255, 255, 255),
+        outline=(230, 230, 230, 255),
+        width=2,
+    )
+    if active:
+        d.ellipse((cx - r - 4, cy - r - 4, cx + r + 4, cy + r + 4), outline=(80, 80, 80, 160), width=3)
+    ink = (70, 70, 70, 255)
+    d.pieslice((cx - 15, cy - 12, cx + 15, cy + 14), 200, 340, fill=ink)
+    d.ellipse((cx - 15, cy - 1, cx + 15, cy + 17), fill=ink)
+    d.ellipse((cx - 3, cy - 18, cx + 3, cy - 10), fill=ink)
+    d.ellipse((cx - 5, cy + 15, cx + 5, cy + 23), fill=ink)
 
 
 def draw_subscribe_cta(img: Image.Image, t_local: float) -> None:
-    """TikTok/YouTube-style: like · ABONE OL · bell with click hands."""
-    # Cycle: 0 like → 1 subscribe → 2 bell (~1.1s each)
+    """Reference-style like · ABONE OL · bell — under Söz-Müzik."""
     phase = (t_local % 3.3) / 1.1
     active = int(phase) % 3
     subphase = phase - int(phase)
@@ -318,12 +330,12 @@ def draw_subscribe_cta(img: Image.Image, t_local: float) -> None:
     layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(layer)
 
-    like_r = int(46 + (6 * click if active == 0 else 0))
-    bell_r = int(46 + (6 * click if active == 2 else 0))
-    sub_scale = 1.0 + (0.08 * click if active == 1 else 0.0)
+    like_r = int(42 + (5 * click if active == 0 else 0))
+    bell_r = int(42 + (5 * click if active == 2 else 0))
+    sub_scale = 1.0 + (0.06 * click if active == 1 else 0.0)
 
-    gap = 28
-    sub_w, sub_h = int(280 * sub_scale), int(78 * sub_scale)
+    gap = 22
+    sub_w, sub_h = int(300 * sub_scale), int(72 * sub_scale)
     total_w = like_r * 2 + gap + sub_w + gap + bell_r * 2
     x0 = (W - total_w) // 2
     cy = CTA_Y
@@ -333,102 +345,104 @@ def draw_subscribe_cta(img: Image.Image, t_local: float) -> None:
     sub_y = cy - sub_h // 2
     bell_cx = sub_x + sub_w + gap + bell_r
 
-    # Soft plate behind row for readability
-    pad = 26
     d.rounded_rectangle(
-        (x0 - pad, cy - 70, x0 + total_w + pad, cy + 70),
-        radius=40,
-        fill=(0, 0, 0, 110),
+        (sub_x + 4, sub_y + 6, sub_x + sub_w + 4, sub_y + sub_h + 6),
+        radius=10,
+        fill=(0, 0, 0, 90),
     )
 
     _draw_thumb(d, like_cx, cy, like_r, active == 0)
 
-    # Red subscribe
     d.rounded_rectangle(
         (sub_x, sub_y, sub_x + sub_w, sub_y + sub_h),
-        radius=12,
-        fill=(*YT_RED, 255),
+        radius=10,
+        fill=(255, 0, 0, 255),
     )
-    fnt = font_path(FONT_BANNER, int(34 * sub_scale))
+    fnt = font_path(FONT_DIR / "Inter-Bold.ttf", int(32 * sub_scale))
     label = "ABONE OL"
-    tw = _measure_spaced(d, label, fnt, 2)
-    th = d.textbbox((0, 0), "A", font=fnt)
-    th = th[3] - th[1]
-    _draw_spaced(
-        d,
+    bb = d.textbbox((0, 0), label, font=fnt)
+    tw, th = bb[2] - bb[0], bb[3] - bb[1]
+    d.text(
         (sub_x + (sub_w - tw) // 2, sub_y + (sub_h - th) // 2 - 2),
         label,
-        fnt,
-        (255, 255, 255, 255),
-        2,
+        font=fnt,
+        fill=(255, 255, 255, 255),
     )
 
     _draw_bell(d, bell_cx, cy, bell_r, active == 2)
 
-    # Hands on like + bell (as in reference); bounce on active
-    if active == 0:
-        _draw_hand(d, like_cx + 10, cy + 8 + int(10 * (1 - click)), 1.05)
-    else:
-        _draw_hand(d, like_cx + 18, cy + 16, 0.95)
-
-    if active == 2:
-        _draw_hand(d, bell_cx + 10, cy + 8 + int(10 * (1 - click)), 1.05)
-    else:
-        _draw_hand(d, bell_cx + 18, cy + 16, 0.95)
-
+    hy0 = cy + 14
+    _draw_hand(
+        d,
+        like_cx + 8,
+        hy0 + (int(8 * (1 - click)) if active == 0 else 6),
+        1.0 if active == 0 else 0.92,
+    )
+    _draw_hand(
+        d,
+        bell_cx + 8,
+        hy0 + (int(8 * (1 - click)) if active == 2 else 6),
+        1.0 if active == 2 else 0.92,
+    )
     if active == 1:
-        # Finger tapping subscribe
-        _draw_hand(d, sub_x + sub_w // 2 + 8, sub_y + sub_h - 4 + int(8 * (1 - click)), 1.0)
+        _draw_hand(d, sub_x + sub_w // 2 + 6, sub_y + sub_h - 2 + int(6 * (1 - click)), 0.95)
 
     img.alpha_composite(layer)
 
 
 def draw_top_banner(img: Image.Image, t_local: float = 0.0) -> None:
-    """Cream poster CTA — lower than before so it sits in frame."""
-    beat = 0.5 + 0.5 * math.sin(t_local * 2.5)
-    scale = 1.0 + 0.035 * beat
+    """Wide single-line DEVAMI YAYINDA bar — not a skinny stacked stamp."""
+    beat = 0.5 + 0.5 * math.sin(t_local * 2.2)
+    scale = 1.0 + 0.025 * beat
 
-    fnt = font_path(FONT_BANNER, int(64 * scale))
-    tracking = 5
-    lines = ("DEVAMI", "YAYINDA")
+    fnt = font_path(FONT_BANNER, int(48 * scale))
+    tracking = 8
+    text = "DEVAMI YAYINDA"
     probe = ImageDraw.Draw(Image.new("RGBA", (8, 8)))
-    widths = [_measure_spaced(probe, ln, fnt, tracking) for ln in lines]
-    h = probe.textbbox((0, 0), "A", font=fnt)
-    line_h = h[3] - h[1]
-    gap = int(2 * scale)
-    text_w = max(widths)
-    text_h = line_h * 2 + gap
+    tw = _measure_spaced(probe, text, fnt, tracking)
+    thb = probe.textbbox((0, 0), text, font=fnt)
+    th = thb[3] - thb[1]
 
-    pad_x, pad_y = 40, 22
-    box_w = text_w + pad_x * 2
-    box_h = text_h + pad_y * 2
+    box_w = min(980, max(tw + 120, 860))
+    box_h = max(96, th + 44)
     bx = (W - box_w) // 2
-    by = BANNER_Y - int(3 * beat)
+    by = BANNER_Y - int(2 * beat)
 
     cream = (
-        min(255, int(242 + 10 * beat)),
-        min(255, int(230 + 8 * beat)),
-        min(255, int(208 + 6 * beat)),
+        min(255, int(245 + 8 * beat)),
+        min(255, int(234 + 6 * beat)),
+        min(255, int(214 + 4 * beat)),
         255,
     )
 
     layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(layer)
-    d.rectangle((bx + 8, by + 10, bx + box_w + 8, by + box_h + 10), fill=(0, 0, 0, 200))
-    d.rectangle((bx, by, bx + box_w, by + box_h), fill=cream)
-    d.rectangle((bx, by, bx + box_w, by + box_h), outline=(*INK, 255), width=5)
-    d.rectangle(
-        (bx + 8, by + 8, bx + box_w - 8, by + box_h - 8),
-        outline=(*INK, 255),
-        width=2,
+    d.rounded_rectangle(
+        (bx + 6, by + 8, bx + box_w + 6, by + box_h + 8),
+        radius=16,
+        fill=(0, 0, 0, 170),
     )
-
-    ty = by + pad_y - 2
-    for i, line in enumerate(lines):
-        tx = bx + (box_w - widths[i]) // 2
-        _draw_spaced(d, (tx, ty), line, fnt, (*INK, 255), tracking)
-        ty += line_h + gap
-
+    d.rounded_rectangle((bx, by, bx + box_w, by + box_h), radius=16, fill=cream)
+    d.rounded_rectangle(
+        (bx, by, bx + box_w, by + box_h),
+        radius=16,
+        outline=(*INK, 255),
+        width=4,
+    )
+    d.rounded_rectangle(
+        (bx + 8, by + 8, bx + box_w - 8, by + box_h - 8),
+        radius=12,
+        outline=(40, 36, 30, 255),
+        width=1,
+    )
+    _draw_spaced(
+        d,
+        (bx + (box_w - tw) // 2, by + (box_h - th) // 2 - 2),
+        text,
+        fnt,
+        (*INK, 255),
+        tracking,
+    )
     img.alpha_composite(layer)
 
 
@@ -471,7 +485,7 @@ def base_vertical() -> Image.Image:
 
     center_spaced(ARTIST, artist_fnt, line_y + 36, WHITE, 6)
     center_spaced(TITLE, title_fnt, line_y + 110, CREAM, 8)
-    center_spaced(CREDIT, credit_fnt, line_y + 168, MUTED, 4)
+    center_spaced(CREDIT, credit_fnt, line_y + 155, MUTED, 4)
     return out.convert("RGBA")
 
 

@@ -44,10 +44,11 @@ EQ_Y = 890
 EQ_H = 72
 CREDIT_TOP = 1280
 PROGRESS_Y = 1765
-BANNER_Y = 168
+BANNER_Y = 130
 
 # Heavier lyric face (Outfit alone reads thin on phone)
 FONT_LYRIC = Path("/usr/share/fonts/truetype/noto/NotoSansDisplay-Bold.ttf")
+FONT_BANNER = Path("/workspace/fonts/ArchivoBlack-Regular.ttf")
 
 # Hottest chorus block — start just before first hook word
 SHORT_T0 = 120.7
@@ -237,7 +238,7 @@ def draw_kinetic_lyrics(img: Image.Image, t: float, audio_level: float = 0.35) -
     for i, (ws, we, w) in enumerate(words):
         lead_s = ws - WORD_LEAD
         if t < lead_s:
-            col = (150, 145, 138, int(130 * alpha))
+            col = (210, 200, 188, int(200 * alpha))
             wy = y
         elif t < we:
             frac = (t - lead_s) / max(0.05, we - lead_s)
@@ -288,57 +289,53 @@ def draw_eq(draw: ImageDraw.ImageDraw, vals: np.ndarray, progress: float) -> Non
 
 
 def draw_top_banner(img: Image.Image, t_local: float = 0.0) -> None:
-    """Eye-catching 'DEVAMI YAYINDA' lockup at top — uppercase, tracked, editorial."""
-    # Soft breathe so it feels alive without screaming
-    pulse = 0.88 + 0.12 * (0.5 + 0.5 * math.sin(t_local * 1.35))
-    a = pulse
+    """Swiss-poster CTA: cream slab + huge black Archivo stack. Impossible to miss."""
+    beat = 0.5 + 0.5 * math.sin(t_local * 2.5)
+    scale = 1.0 + 0.04 * beat
+
+    fnt = font_path(FONT_BANNER, int(78 * scale))
+    tracking = 6
+    lines = ("DEVAMI", "YAYINDA")
+    probe = ImageDraw.Draw(Image.new("RGBA", (8, 8)))
+    widths = [_measure_spaced(probe, ln, fnt, tracking) for ln in lines]
+    h = probe.textbbox((0, 0), "A", font=fnt)
+    line_h = h[3] - h[1]
+    gap = int(2 * scale)
+    text_w = max(widths)
+    text_h = line_h * 2 + gap
+
+    pad_x, pad_y = 48, 28
+    box_w = text_w + pad_x * 2
+    box_h = text_h + pad_y * 2
+    bx = (W - box_w) // 2
+    by = 118
+    # Micro nudge with beat so the whole slab pulses
+    by -= int(4 * beat)
+
+    cream = (
+        min(255, int(242 + 10 * beat)),
+        min(255, int(230 + 8 * beat)),
+        min(255, int(208 + 6 * beat)),
+        255,
+    )
+    ink = (10, 8, 6, 255)
 
     layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(layer)
 
-    # Soft top plate behind the lockup
-    for yy in range(90, 280):
-        p = (yy - 90) / 190
-        # peak opacity near banner, fade out
-        peak = math.sin(min(1.0, max(0.0, p)) * math.pi)
-        d.line([(0, yy), (W, yy)], fill=(0, 0, 0, int(110 * peak * a)))
+    # Hard shadow (poster drop)
+    d.rectangle((bx + 10, by + 12, bx + box_w + 10, by + box_h + 12), fill=(0, 0, 0, 200))
+    # Cream slab — sharp corners (not a soft app chip)
+    d.rectangle((bx, by, bx + box_w, by + box_h), fill=cream)
+    # Double ink frame
+    d.rectangle((bx, by, bx + box_w, by + box_h), outline=ink, width=6)
+    d.rectangle((bx + 10, by + 10, bx + box_w - 10, by + box_h - 10), outline=ink, width=2)
 
-    fnt = font_path(FONT_SERIF, 36)
-    tracking = 14
-    text = TOP_BANNER
-    tw = _measure_spaced(d, text, fnt, tracking)
-    x = (W - tw) // 2
-    y = BANNER_Y
-
-    # Hairline + diamond motif
-    mid = W // 2
-    line_half = max(40, tw // 2 + 20)
-    cream_a = (*CREAM, int(220 * a))
-    mute_a = (*CREAM, int(160 * a))
-    d.line((mid - line_half, y - 18, mid - 14, y - 18), fill=mute_a, width=2)
-    d.line((mid + 14, y - 18, mid + line_half, y - 18), fill=mute_a, width=2)
-    # small diamond
-    d.polygon(
-        [(mid, y - 26), (mid + 6, y - 18), (mid, y - 10), (mid - 6, y - 18)],
-        fill=cream_a,
-    )
-
-    # Soft glow
-    glow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    gd = ImageDraw.Draw(glow)
-    _draw_spaced(gd, (x, y), text, fnt, (*CREAM, int(90 * a)), tracking)
-    layer.alpha_composite(glow.filter(ImageFilter.GaussianBlur(8)))
-
-    # Stroke + fill
-    for ox, oy in ((-2, 0), (2, 0), (0, -2), (0, 2), (-1, -1), (1, 1)):
-        _draw_spaced(d, (x + ox, y + oy), text, fnt, (0, 0, 0, int(200 * a)), tracking)
-    _draw_spaced(d, (x, y), text, fnt, (*CREAM, int(255 * a)), tracking)
-
-    # Bottom hairline
-    bb = d.textbbox((0, 0), "A", font=fnt)
-    th = bb[3] - bb[1]
-    by = y + th + 16
-    d.line((mid - line_half, by, mid + line_half, by), fill=mute_a, width=2)
+    ty = by + pad_y - 2
+    for i, line in enumerate(lines):
+        tx = bx + (box_w - widths[i]) // 2
+        _draw_spaced(d, (tx, ty), line, fnt, ink, tracking)
+        ty += line_h + gap
 
     img.alpha_composite(layer)
 

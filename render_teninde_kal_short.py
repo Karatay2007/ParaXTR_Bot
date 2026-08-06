@@ -36,13 +36,18 @@ PROGRESS_BG = (55, 50, 45)
 TITLE = "TENİNDE KAL"
 ARTIST = "ARVEN SOLÉ"
 CREDIT = "SÖZ · MÜZİK   ARVEN SOLÉ"
+TOP_BANNER = "DEVAMI YAYINDA"
 
 # Cover layout — lyrics + EQ tight & high; credits breathe below
-LYRIC_Y = 760
-EQ_Y = 870
+LYRIC_Y = 780
+EQ_Y = 890
 EQ_H = 72
 CREDIT_TOP = 1280
 PROGRESS_Y = 1765
+BANNER_Y = 168
+
+# Heavier lyric face (Outfit alone reads thin on phone)
+FONT_LYRIC = Path("/usr/share/fonts/truetype/noto/NotoSansDisplay-Bold.ttf")
 
 # Hottest chorus block — start just before first hook word
 SHORT_T0 = 120.7
@@ -185,10 +190,10 @@ def draw_kinetic_lyrics(img: Image.Image, t: float, audio_level: float = 0.35) -
         return
 
     lvl = max(0.0, min(1.0, audio_level))
-    fsize = max(48, int(54 * (1.0 + 0.04 * lvl)))
-    fnt = font_path(FONT_OUTFIT, fsize)
-    tracking = 5  # airy uppercase look
-    word_gap = 28
+    fsize = max(54, int(60 * (1.0 + 0.04 * lvl)))
+    fnt = font_path(FONT_LYRIC, fsize)
+    tracking = 4
+    word_gap = 26
 
     probe = ImageDraw.Draw(Image.new("RGBA", (8, 8)))
     texts = [w for _, _, w in words]
@@ -204,18 +209,23 @@ def draw_kinetic_lyrics(img: Image.Image, t: float, audio_level: float = 0.35) -
     bd = ImageDraw.Draw(bloom)
     cx = x
     for i, w in enumerate(texts):
-        _draw_spaced(bd, (cx, y), w, fnt, (*CREAM, int((40 + 50 * lvl) * alpha)), tracking)
+        _draw_spaced(bd, (cx, y), w, fnt, (*CREAM, int((50 + 55 * lvl) * alpha)), tracking)
         cx += word_widths[i] + word_gap
-    img.alpha_composite(bloom.filter(ImageFilter.GaussianBlur(12 + int(4 * lvl))))
+    img.alpha_composite(bloom.filter(ImageFilter.GaussianBlur(14 + int(4 * lvl))))
 
-    # Dark stroke for readability
+    # Thick dark stroke for phone readability
     stroke = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     sd = ImageDraw.Draw(stroke)
     cx = x
+    offsets = (
+        (-3, 0), (3, 0), (0, -3), (0, 3),
+        (-3, -3), (3, 3), (-3, 3), (3, -3),
+        (-2, 0), (2, 0), (0, -2), (0, 2),
+    )
     for i, w in enumerate(texts):
-        for ox, oy in ((-2, 0), (2, 0), (0, -2), (0, 2), (-2, -2), (2, 2), (-2, 2), (2, -2)):
+        for ox, oy in offsets:
             _draw_spaced(
-                sd, (cx + ox, y + oy), w, fnt, (0, 0, 0, int(200 * alpha)), tracking
+                sd, (cx + ox, y + oy), w, fnt, (0, 0, 0, int(220 * alpha)), tracking
             )
         cx += word_widths[i] + word_gap
     img.alpha_composite(stroke)
@@ -275,6 +285,62 @@ def draw_eq(draw: ImageDraw.ImageDraw, vals: np.ndarray, progress: float) -> Non
     px = bar_x0 + int((bar_x1 - bar_x0) * progress)
     draw.line((bar_x0, PROGRESS_Y, px, PROGRESS_Y), fill=CREAM, width=2)
     draw.ellipse((px - 5, PROGRESS_Y - 5, px + 5, PROGRESS_Y + 5), fill=CREAM)
+
+
+def draw_top_banner(img: Image.Image, t_local: float = 0.0) -> None:
+    """Eye-catching 'DEVAMI YAYINDA' lockup at top — uppercase, tracked, editorial."""
+    # Soft breathe so it feels alive without screaming
+    pulse = 0.88 + 0.12 * (0.5 + 0.5 * math.sin(t_local * 1.35))
+    a = pulse
+
+    layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(layer)
+
+    # Soft top plate behind the lockup
+    for yy in range(90, 280):
+        p = (yy - 90) / 190
+        # peak opacity near banner, fade out
+        peak = math.sin(min(1.0, max(0.0, p)) * math.pi)
+        d.line([(0, yy), (W, yy)], fill=(0, 0, 0, int(110 * peak * a)))
+
+    fnt = font_path(FONT_SERIF, 36)
+    tracking = 14
+    text = TOP_BANNER
+    tw = _measure_spaced(d, text, fnt, tracking)
+    x = (W - tw) // 2
+    y = BANNER_Y
+
+    # Hairline + diamond motif
+    mid = W // 2
+    line_half = max(40, tw // 2 + 20)
+    cream_a = (*CREAM, int(220 * a))
+    mute_a = (*CREAM, int(160 * a))
+    d.line((mid - line_half, y - 18, mid - 14, y - 18), fill=mute_a, width=2)
+    d.line((mid + 14, y - 18, mid + line_half, y - 18), fill=mute_a, width=2)
+    # small diamond
+    d.polygon(
+        [(mid, y - 26), (mid + 6, y - 18), (mid, y - 10), (mid - 6, y - 18)],
+        fill=cream_a,
+    )
+
+    # Soft glow
+    glow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    gd = ImageDraw.Draw(glow)
+    _draw_spaced(gd, (x, y), text, fnt, (*CREAM, int(90 * a)), tracking)
+    layer.alpha_composite(glow.filter(ImageFilter.GaussianBlur(8)))
+
+    # Stroke + fill
+    for ox, oy in ((-2, 0), (2, 0), (0, -2), (0, 2), (-1, -1), (1, 1)):
+        _draw_spaced(d, (x + ox, y + oy), text, fnt, (0, 0, 0, int(200 * a)), tracking)
+    _draw_spaced(d, (x, y), text, fnt, (*CREAM, int(255 * a)), tracking)
+
+    # Bottom hairline
+    bb = d.textbbox((0, 0), "A", font=fnt)
+    th = bb[3] - bb[1]
+    by = y + th + 16
+    d.line((mid - line_half, by, mid + line_half, by), fill=mute_a, width=2)
+
+    img.alpha_composite(layer)
 
 
 def base_vertical() -> Image.Image:
@@ -372,6 +438,7 @@ def render_short() -> None:
             audio_level = min(1.0, (rms / peak_rms) ** 0.85)
             smooth = 0.55 * smooth + 0.45 * band_energies(chunk, n_bars)
             frame = base.copy()
+            draw_top_banner(frame, t_local=(t - t0))
             draw_kinetic_lyrics(frame, t, audio_level=audio_level)
             d = ImageDraw.Draw(frame)
             draw_eq(d, smooth, (t - t0) / max(0.001, clip_dur))

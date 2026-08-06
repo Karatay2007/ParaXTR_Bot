@@ -84,8 +84,9 @@ LYRICS: list[tuple[float, float, str]] = [
     (183.12, 186.50, "Kaçsam da"),
 ]
 
-SHORT_T0 = 29.5
-SHORT_T1 = 63.8
+# Hottest section: final chorus climax (energy peaks ~174–186s)
+SHORT_T0 = 162.5
+SHORT_T1 = 196.5
 
 
 def font(name: str, size: int) -> ImageFont.FreeTypeFont:

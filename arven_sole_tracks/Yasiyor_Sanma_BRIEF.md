@@ -70,3 +70,8 @@ Dark Turkish emotional trap-pop instrumental, yanık heartbreak mood, slow tempo
 
 Style aynı kalsın; lyrics box’a yukarıdaki tam sözleri yapıştır.  
 Male Turkish vocal, emotional yanık delivery, slightly raspy, intimate.
+
+
+## Üretilen enstrümantal (local MusicGen)
+- `Yasiyor_Sanma_INSTRUMENTAL.mp3` (~30s)
+- `Yasiyor_Sanma_INSTRUMENTAL_LONG.mp3` (~56s crossfade)

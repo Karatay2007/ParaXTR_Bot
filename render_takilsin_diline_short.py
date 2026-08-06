@@ -432,11 +432,12 @@ def draw_top_banner(img: Image.Image, t_local: float = 0.0) -> None:
     _draw_spaced(fd, (x, y), text, fnt, cream, tracking)
     layer.alpha_composite(fill)
 
-    # Thin cream underline — clear air under the glyphs
+    # Thin cream underline — sit well below glyph bottoms (not glued to baseline)
     ud = ImageDraw.Draw(layer)
     uw = int(tw * (0.48 + 0.16 * pulse))
     ux = x + (tw - uw) // 2
-    uy = y + th + 52
+    glyph_bottom = y + thb[3]
+    uy = glyph_bottom + 78
     ud.rounded_rectangle((ux, uy, ux + uw, uy + 3), radius=2, fill=(*cream[:3], 190))
 
     img.alpha_composite(layer)

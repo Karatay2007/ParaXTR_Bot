@@ -16,6 +16,8 @@ AUDIO = Path("/workspace/arven_sole_tracks/Teninde_Kal.mp3")
 COVER = Path("/opt/cursor/artifacts/assets/arven-sole-cover.png")
 WAV = Path("/tmp/teninde.wav")
 FONT_DIR = Path("/usr/share/fonts/truetype/macos")
+FONT_OUTFIT = Path("/workspace/fonts/Outfit.ttf")
+FONT_SERIF = Path("/usr/share/fonts/truetype/noto/NotoSerifDisplay-Bold.ttf")
 ART = Path("/opt/cursor/artifacts")
 OUT_SHORT = Path("/workspace/ArvenSole_TenindeKal_SHORT.mp4")
 
@@ -27,9 +29,16 @@ WHITE = (255, 255, 255)
 MUTED = (168, 162, 152)
 PROGRESS_BG = (55, 50, 45)
 
-TITLE = "Teninde Kal"
-ARTIST = "Arven Solé"
-CREDIT = "Söz-Müzik: Arven Solé"
+TITLE = "TENİNDE KAL"
+ARTIST = "ARVEN SOLÉ"
+CREDIT = "SÖZ · MÜZİK   ARVEN SOLÉ"
+
+# Cover layout — lyrics + EQ tight & high; credits breathe below
+LYRIC_Y = 760
+EQ_Y = 870
+EQ_H = 72
+CREDIT_TOP = 1280
+PROGRESS_Y = 1765
 
 # Hottest chorus block — start just before first hook word
 SHORT_T0 = 120.7
@@ -54,8 +63,30 @@ LINES: list[list[tuple[float, float, str]]] = [
 ]
 
 
-def font(name: str, size: int) -> ImageFont.FreeTypeFont:
+def font_path(path: Path, size: int) -> ImageFont.FreeTypeFont:
+    return ImageFont.truetype(str(path), size)
+
+
+def font_inter(name: str, size: int) -> ImageFont.FreeTypeFont:
     return ImageFont.truetype(str(FONT_DIR / name), size)
+
+
+def tr_upper(s: str) -> str:
+    """Turkish-aware uppercase (i→İ, ı→I, …)."""
+    table = str.maketrans(
+        {
+            "i": "İ",
+            "ı": "I",
+            "ş": "Ş",
+            "ğ": "Ğ",
+            "ü": "Ü",
+            "ö": "Ö",
+            "ç": "Ç",
+            "I": "I",
+            "İ": "İ",
+        }
+    )
+    return s.translate(table).upper()
 
 
 def ensure_wav() -> tuple[np.ndarray, int]:
@@ -92,11 +123,11 @@ def band_energies(chunk: np.ndarray, n_bars: int = 24) -> np.ndarray:
 
 
 def _display_word(raw: str) -> str:
-    """Force hook spelling — never Seninle / Senin de."""
+    """Force hook spelling — never Seninle / Senin de. Always UPPERCASE."""
     key = raw.strip().casefold()
     if key in {"seninle", "senin", "seninde", "senin de"}:
-        return "Teninle"
-    return raw.strip()
+        return "TENİNLE"
+    return tr_upper(raw.strip())
 
 
 def line_at(t: float) -> list[tuple[float, float, str]] | None:
@@ -107,8 +138,35 @@ def line_at(t: float) -> list[tuple[float, float, str]] | None:
     return None
 
 
+def _measure_spaced(draw: ImageDraw.ImageDraw, text: str, fnt, tracking: int) -> int:
+    if not text:
+        return 0
+    total = 0
+    for i, ch in enumerate(text):
+        bb = draw.textbbox((0, 0), ch, font=fnt)
+        total += bb[2] - bb[0]
+        if i < len(text) - 1:
+            total += tracking
+    return total
+
+
+def _draw_spaced(
+    draw: ImageDraw.ImageDraw,
+    xy: tuple[int, int],
+    text: str,
+    fnt,
+    fill,
+    tracking: int,
+) -> None:
+    x, y = xy
+    for i, ch in enumerate(text):
+        draw.text((x, y), ch, font=fnt, fill=fill)
+        bb = draw.textbbox((0, 0), ch, font=fnt)
+        x += (bb[2] - bb[0]) + tracking
+
+
 def draw_kinetic_lyrics(img: Image.Image, t: float, audio_level: float = 0.35) -> None:
-    """Instant per-word highlight from clocks. No underline strip."""
+    """Instant per-word highlight — stylish uppercase + tracking."""
     words = line_at(t)
     if not words:
         return
@@ -123,93 +181,96 @@ def draw_kinetic_lyrics(img: Image.Image, t: float, audio_level: float = 0.35) -
         return
 
     lvl = max(0.0, min(1.0, audio_level))
-    fsize = max(46, int(58 * (1.0 + 0.05 * lvl)))
-    fnt = font("Inter-Bold.ttf", fsize)
+    fsize = max(48, int(54 * (1.0 + 0.04 * lvl)))
+    fnt = font_path(FONT_OUTFIT, fsize)
+    tracking = 5  # airy uppercase look
+    word_gap = 28
 
+    probe = ImageDraw.Draw(Image.new("RGBA", (8, 8)))
     texts = [w for _, _, w in words]
-    space_bb = ImageDraw.Draw(Image.new("RGBA", (8, 8))).textbbox((0, 0), " ", font=fnt)
-    space_w = space_bb[2] - space_bb[0]
-    word_widths = []
-    for w in texts:
-        bb = ImageDraw.Draw(Image.new("RGBA", (8, 8))).textbbox((0, 0), w, font=fnt)
-        word_widths.append(bb[2] - bb[0])
-    total = sum(word_widths) + space_w * max(0, len(texts) - 1)
-    th = ImageDraw.Draw(Image.new("RGBA", (8, 8))).textbbox((0, 0), texts[0], font=fnt)
-    th = th[3] - th[1]
+    word_widths = [_measure_spaced(probe, w, fnt, tracking) for w in texts]
+    total = sum(word_widths) + word_gap * max(0, len(texts) - 1)
+    th_bb = probe.textbbox((0, 0), "A", font=fnt)
+    th = th_bb[3] - th_bb[1]
     x = (W - total) // 2
-    y = 900 - th // 2 - int(8 * lvl)
+    y = LYRIC_Y - th // 2 - int(6 * lvl)
 
-    full = " ".join(texts)
+    # Soft cream bloom behind the line
     bloom = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    ImageDraw.Draw(bloom).text(
-        (x, y), full, font=fnt, fill=(*CREAM, int((50 + 60 * lvl) * alpha))
-    )
-    img.alpha_composite(bloom.filter(ImageFilter.GaussianBlur(10 + int(5 * lvl))))
+    bd = ImageDraw.Draw(bloom)
+    cx = x
+    for i, w in enumerate(texts):
+        _draw_spaced(bd, (cx, y), w, fnt, (*CREAM, int((40 + 50 * lvl) * alpha)), tracking)
+        cx += word_widths[i] + word_gap
+    img.alpha_composite(bloom.filter(ImageFilter.GaussianBlur(12 + int(4 * lvl))))
 
+    # Dark stroke for readability
     stroke = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     sd = ImageDraw.Draw(stroke)
     cx = x
     for i, w in enumerate(texts):
-        for ox, oy in ((-3, 0), (3, 0), (0, -3), (0, 3), (-2, -2), (2, 2), (-2, 2), (2, -2)):
-            sd.text((cx + ox, y + oy), w, font=fnt, fill=(0, 0, 0, int(210 * alpha)))
-        cx += word_widths[i] + space_w
+        for ox, oy in ((-2, 0), (2, 0), (0, -2), (0, 2), (-2, -2), (2, 2), (-2, 2), (2, -2)):
+            _draw_spaced(
+                sd, (cx + ox, y + oy), w, fnt, (0, 0, 0, int(200 * alpha)), tracking
+            )
+        cx += word_widths[i] + word_gap
     img.alpha_composite(stroke)
 
-    # Active word = clock window (with lead). Instant — not a linear wipe over the line.
+    # Active word = clock window (with lead)
     layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     ld = ImageDraw.Draw(layer)
     cx = x
     for i, (ws, we, w) in enumerate(words):
         lead_s = ws - WORD_LEAD
         if t < lead_s:
-            col = (145, 142, 138, int(120 * alpha))
+            col = (150, 145, 138, int(130 * alpha))
             wy = y
         elif t < we:
             frac = (t - lead_s) / max(0.05, we - lead_s)
             col = (*CREAM, int(255 * alpha))
-            wy = y - int((6 + 12 * lvl) * math.sin(min(1.0, frac) * math.pi))
+            wy = y - int((5 + 10 * lvl) * math.sin(min(1.0, frac) * math.pi))
         else:
             col = (255, 255, 255, int(255 * alpha))
             wy = y
-        ld.text((cx, wy), w, font=fnt, fill=col)
-        cx += word_widths[i] + space_w
+        _draw_spaced(ld, (cx, wy), w, fnt, col, tracking)
+        cx += word_widths[i] + word_gap
     img.alpha_composite(layer)
-
 
 
 def draw_eq(draw: ImageDraw.ImageDraw, vals: np.ndarray, progress: float) -> None:
     n = len(vals)
-    pill_w, pill_h = 760, 100
+    pill_w, pill_h = 620, EQ_H
     pill_x = (W - pill_w) // 2
-    eq_y = 1280
+    eq_y = EQ_Y
     draw.rounded_rectangle(
         (pill_x, eq_y, pill_x + pill_w, eq_y + pill_h),
-        radius=22,
-        fill=(18, 16, 14),
-        outline=(38, 34, 30),
-        width=2,
+        radius=18,
+        fill=(14, 12, 11),
+        outline=(42, 38, 34),
+        width=1,
     )
-    margin_x, margin_y = 28, 14
+    margin_x, margin_y = 24, 12
     usable_w = pill_w - 2 * margin_x
     usable_h = pill_h - 2 * margin_y
-    gap = 6
-    bar_w = max(8, int((usable_w - gap * (n - 1)) / n))
+    gap = 5
+    bar_w = max(7, int((usable_w - gap * (n - 1)) / n))
     total = n * bar_w + (n - 1) * gap
     start_x = pill_x + margin_x + (usable_w - total) // 2
     base_y = eq_y + pill_h - margin_y
     for i, v in enumerate(vals):
-        bh = int(10 + float(v) * (usable_h - 10))
+        bh = int(8 + float(v) * (usable_h - 8))
         x0 = start_x + i * (bar_w + gap)
         color = CREAM if i % 3 != 2 else CREAM2
         draw.rounded_rectangle(
             (x0, base_y - bh, x0 + bar_w, base_y), radius=bar_w // 2, fill=color
         )
-    progress_y = 1740
-    bar_x0, bar_x1 = 130, W - 130
-    draw.line((bar_x0, progress_y, bar_x1, progress_y), fill=PROGRESS_BG, width=3)
+
+    # Slim progress near bottom of cover block
+    bar_x0, bar_x1 = 180, W - 180
+    draw.line((bar_x0, PROGRESS_Y, bar_x1, PROGRESS_Y), fill=PROGRESS_BG, width=2)
     px = bar_x0 + int((bar_x1 - bar_x0) * progress)
-    draw.line((bar_x0, progress_y, px, progress_y), fill=CREAM, width=3)
-    draw.ellipse((px - 6, progress_y - 6, px + 6, progress_y + 6), fill=CREAM)
+    draw.line((bar_x0, PROGRESS_Y, px, PROGRESS_Y), fill=CREAM, width=2)
+    draw.ellipse((px - 5, PROGRESS_Y - 5, px + 5, PROGRESS_Y + 5), fill=CREAM)
 
 
 def base_vertical() -> Image.Image:
@@ -222,26 +283,40 @@ def base_vertical() -> Image.Image:
     if top + H > nh:
         top = nh - H
     img = img.crop((left, top, left + W, top + H))
+
+    # Soft vignette into credit zone — cover-like, not a hard black slab
     overlay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(overlay)
-    credit_top = 1480
-    for i in range(18):
-        a = int(12 + i * 10)
-        y0 = credit_top - 90 + i * 5
-        d.rectangle((0, y0, W, H), fill=(0, 0, 0, min(240, a)))
-    d.rectangle((0, credit_top, W, H), fill=(0, 0, 0, 255))
-    out = Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGB")
+    fade_start = CREDIT_TOP - 220
+    for yy in range(fade_start, H):
+        p = (yy - fade_start) / max(1, H - fade_start)
+        # ease into deep black for readability
+        a = int(min(245, (p**1.35) * 255))
+        d.line([(0, yy), (W, yy)], fill=(0, 0, 0, a))
+    out = Image.alpha_composite(img.convert("RGBA"), overlay)
     d2 = ImageDraw.Draw(out)
 
-    def center(text, fnt, y, fill):
-        bbox = d2.textbbox((0, 0), text, font=fnt)
-        tw = bbox[2] - bbox[0]
-        d2.text(((W - tw) // 2, y), text, font=fnt, fill=fill)
+    # Cover credit stack — breathing room under EQ
+    line_y = CREDIT_TOP + 40
+    line_w = 72
+    d2.line(
+        ((W - line_w) // 2, line_y, (W + line_w) // 2, line_y),
+        fill=CREAM,
+        width=2,
+    )
 
-    center(ARTIST, font("Inter-Bold.ttf", 48), 1535, WHITE)
-    center(TITLE, font("Inter-SemiBold.ttf", 30), 1595, CREAM)
-    center(CREDIT, font("Inter-Regular.ttf", 22), 1645, MUTED)
-    return out
+    artist_fnt = font_path(FONT_SERIF, 52)
+    title_fnt = font_path(FONT_OUTFIT, 28)
+    credit_fnt = font_path(FONT_OUTFIT, 20)
+
+    def center_spaced(text: str, fnt, y: int, fill, tracking: int) -> None:
+        tw = _measure_spaced(d2, text, fnt, tracking)
+        _draw_spaced(d2, ((W - tw) // 2, y), text, fnt, fill, tracking)
+
+    center_spaced(ARTIST, artist_fnt, line_y + 36, WHITE, 6)
+    center_spaced(TITLE, title_fnt, line_y + 110, CREAM, 10)
+    center_spaced(CREDIT, credit_fnt, line_y + 168, MUTED, 4)
+    return out.convert("RGBA")
 
 
 def render_short() -> None:
@@ -292,7 +367,7 @@ def render_short() -> None:
             peak_rms = max(peak_rms * 0.995, rms, 1e-6)
             audio_level = min(1.0, (rms / peak_rms) ** 0.85)
             smooth = 0.55 * smooth + 0.45 * band_energies(chunk, n_bars)
-            frame = base.copy().convert("RGBA")
+            frame = base.copy()
             draw_kinetic_lyrics(frame, t, audio_level=audio_level)
             d = ImageDraw.Draw(frame)
             draw_eq(d, smooth, (t - t0) / max(0.001, clip_dur))

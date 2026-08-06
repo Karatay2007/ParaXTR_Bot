@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Arven Solé — Teninde Kal Shorts with real kinetic lyric effects."""
+"""Arven Solé — Teninde Kal Shorts with real kinetic lyric effects.
+
+STYLE (user 2026-08-06): Next lyric videos → make subtitle text MORE prominent
+(heavier weight / thicker stroke / slightly larger). Current Outfit can read thin.
+"""
 
 from __future__ import annotations
 

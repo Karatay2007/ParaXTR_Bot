@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Arven Solé — Teninde Kal YouTube 16:9 (same cover template as Short, landscape)."""
+"""Arven Solé — Teninde Kal YouTube 16:9 (same cover template as Short, landscape).
+
+STYLE (user 2026-08-06): Next lyric videos → make subtitle text MORE prominent
+(heavier weight / thicker stroke / slightly larger). Current Outfit can read thin.
+"""
 
 from __future__ import annotations
 

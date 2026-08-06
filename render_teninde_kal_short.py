@@ -35,16 +35,17 @@ CREDIT = "Söz-Müzik: Arven Solé"
 SHORT_T0 = 120.0
 SHORT_T1 = 155.5
 
+# Tight cues aligned to vocal phrases (absolute song time)
 LYRICS: list[tuple[float, float, str]] = [
     (120.00, 123.00, "Seninle kal bu gece"),
-    (123.00, 127.00, "Aklım sende kayboldu"),
-    (127.00, 130.00, "Dudaklar yalan söylemesin"),
-    (130.00, 134.00, "Kalbin burada olsun"),
-    (134.00, 137.00, "Seninle kal bu gece"),
-    (137.00, 142.00, "Şehir dışarıda uyusun"),
-    (142.00, 145.00, "İkimiz bu odada"),
-    (145.00, 149.00, "Sabahı unutalım"),
-    (149.00, 155.50, "Seninle kal bu gece"),
+    (123.00, 126.80, "Aklım sende kayboldu"),
+    (126.80, 130.00, "Dudaklar yalan söylemesin"),
+    (130.00, 133.80, "Kalbin burada olsun"),
+    (133.80, 137.00, "Seninle kal bu gece"),
+    (137.00, 141.60, "Şehir dışarıda uyusun"),
+    (141.60, 144.80, "İkimiz bu odada"),
+    (144.80, 148.80, "Sabahı unutalım"),
+    (148.80, 155.50, "Seninle kal bu gece"),
 ]
 
 
@@ -97,73 +98,74 @@ def ease_out_back(x: float) -> float:
     return 1 + c3 * (x - 1) ** 3 + c1 * (x - 1) ** 2
 
 
-def draw_kinetic_lyrics(img: Image.Image, t: float) -> None:
-    """Visible kinetic lyrics: band, bloom, word karaoke, fat underline."""
+def draw_kinetic_lyrics(img: Image.Image, t: float, audio_level: float = 0.35) -> None:
+    """Designed karaoke: no underline strip. Text pulses with audio."""
     cur, s, e = lyric_at(t)
     if not cur:
         return
 
     dur = max(0.05, e - s)
     local = t - s
-    if local < 0.4:
-        p = min(1.0, local / 0.4)
-        pop = 0.7 + 0.45 * math.sin(p * math.pi * 0.5) + 0.15 * math.sin(p * math.pi)
-        alpha = min(1.0, p / 0.2)
+    # Soft designed entrance (no bounce chaos)
+    if local < 0.28:
+        p = min(1.0, local / 0.28)
+        pop = 0.94 + 0.06 * (1 - (1 - p) ** 3)
+        alpha = min(1.0, p / 0.15)
     else:
         pop = 1.0
         alpha = 1.0
-    if e - t < 0.28:
-        alpha *= max(0.0, (e - t) / 0.28)
+    if e - t < 0.22:
+        alpha *= max(0.0, (e - t) / 0.22)
 
-    fsize = max(40, int(64 * pop))
+    # Audio integration: size + lift follow loudness
+    lvl = max(0.0, min(1.0, audio_level))
+    pulse = 1.0 + 0.07 * lvl
+    fsize = max(42, int(58 * pop * pulse))
     fnt = font("Inter-Bold.ttf", fsize)
 
-    probe = Image.new("RGBA", (W, 300), (0, 0, 0, 0))
-    bbox = ImageDraw.Draw(probe).textbbox((0, 0), cur, font=fnt)
-    tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
-    y = 880 - th // 2
-
-    # Dark atmospheric band + cream side rails
-    band = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    bd = ImageDraw.Draw(band)
-    by0, by1 = y - 40, y + th + 50
-    mid = (by0 + by1) / 2
-    half = (by1 - by0) / 2 + 1e-6
-    for yy in range(by0, by1):
-        a = int(170 * alpha * (1 - abs((yy - mid) / half) * 0.35))
-        bd.line((0, yy, W, yy), fill=(0, 0, 0, max(0, min(200, a))))
-    bd.rectangle((0, by0 + 8, 8, by1 - 8), fill=(*CREAM, int(220 * alpha)))
-    bd.rectangle((W - 8, by0 + 8, W, by1 - 8), fill=(*CREAM, int(220 * alpha)))
-    img.alpha_composite(band)
-
     words = cur.split()
-    space_w = ImageDraw.Draw(Image.new("RGBA", (8, 8))).textbbox((0, 0), " ", font=fnt)
-    space_w = space_w[2] - space_w[0]
+    space_bb = ImageDraw.Draw(Image.new("RGBA", (8, 8))).textbbox((0, 0), " ", font=fnt)
+    space_w = space_bb[2] - space_bb[0]
     word_widths = []
     for w in words:
         bb = ImageDraw.Draw(Image.new("RGBA", (8, 8))).textbbox((0, 0), w, font=fnt)
         word_widths.append(bb[2] - bb[0])
     total = sum(word_widths) + space_w * max(0, len(words) - 1)
+    # measure height from first word
+    th = ImageDraw.Draw(Image.new("RGBA", (8, 8))).textbbox((0, 0), words[0] if words else "A", font=fnt)
+    th = th[3] - th[1]
     x = (W - total) // 2
+    y = 900 - th // 2 - int(6 * lvl)  # rises slightly with bass/energy
 
-    # Bloom under full line
+    # Soft readability veil only (no hard plate, no side rails, no underline)
+    veil = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    vd = ImageDraw.Draw(veil)
+    by0, by1 = y - 28, y + th + 28
+    mid = (by0 + by1) / 2
+    half = (by1 - by0) / 2 + 1e-6
+    for yy in range(by0, by1):
+        a = int((95 + 35 * lvl) * alpha * (1 - abs((yy - mid) / half) * 0.55))
+        vd.line((80, yy, W - 80, yy), fill=(0, 0, 0, max(0, min(160, a))))
+    img.alpha_composite(veil)
+
+    # Gentle cream bloom tied to audio
     bloom = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    ImageDraw.Draw(bloom).text((x, y), cur, font=fnt, fill=(*CREAM, int(150 * alpha)))
-    img.alpha_composite(bloom.filter(ImageFilter.GaussianBlur(18)))
+    ImageDraw.Draw(bloom).text(
+        (x, y), cur, font=fnt, fill=(*CREAM, int((70 + 70 * lvl) * alpha))
+    )
+    img.alpha_composite(bloom.filter(ImageFilter.GaussianBlur(12 + int(6 * lvl))))
 
-    # Thick outline per word
+    # Clean dark stroke
     stroke = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     sd = ImageDraw.Draw(stroke)
     cx = x
     for i, w in enumerate(words):
-        for ox in range(-5, 6):
-            for oy in range(-5, 6):
-                if ox * ox + oy * oy <= 25:
-                    sd.text((cx + ox, y + oy), w, font=fnt, fill=(0, 0, 0, int(240 * alpha)))
+        for ox, oy in ((-3, 0), (3, 0), (0, -3), (0, 3), (-2, -2), (2, 2), (-2, 2), (2, -2)):
+            sd.text((cx + ox, y + oy), w, font=fnt, fill=(0, 0, 0, int(210 * alpha)))
         cx += word_widths[i] + space_w
     img.alpha_composite(stroke)
 
-    # Word karaoke
+    # Word karaoke synced to cue timing; active word reacts to audio
     prog = min(1.0, max(0.0, local / dur))
     active_f = prog * max(1, len(words))
     layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
@@ -172,33 +174,18 @@ def draw_kinetic_lyrics(img: Image.Image, t: float) -> None:
     for i, w in enumerate(words):
         word_prog = max(0.0, min(1.0, active_f - i))
         if word_prog <= 0:
-            col = (170, 170, 170, int(130 * alpha))
+            col = (150, 148, 145, int(110 * alpha))
             wy = y
-        elif word_prog < 1:
+        elif word_prog < 1.0:
+            # live word — cream + audio lift
             col = (*CREAM, int(255 * alpha))
-            wy = y - int(10 * math.sin(word_prog * math.pi))
+            wy = y - int((4 + 10 * lvl) * math.sin(word_prog * math.pi))
         else:
             col = (255, 255, 255, int(255 * alpha))
             wy = y
         ld.text((cx, wy), w, font=fnt, fill=col)
         cx += word_widths[i] + space_w
     img.alpha_composite(layer)
-
-    # Fat underline + diamonds
-    ly = y + th + 18
-    pad = 16
-    line = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    ld = ImageDraw.Draw(line)
-    full = total + 2 * pad
-    x0 = x - pad
-    ld.line((x0, ly, x0 + full, ly), fill=(60, 55, 50, int(120 * alpha)), width=5)
-    ld.line((x0, ly, x0 + int(full * prog), ly), fill=(*CREAM, int(255 * alpha)), width=5)
-    for dx in (x0, x0 + int(full * prog)):
-        ld.polygon(
-            [(dx, ly - 7), (dx + 7, ly), (dx, ly + 7), (dx - 7, ly)],
-            fill=(*CREAM, int(255 * alpha)),
-        )
-    img.alpha_composite(line)
 
 
 
@@ -292,13 +279,18 @@ def render_short() -> None:
     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
     assert proc.stdin is not None
     start = int(t0 * rate)
+    # Running peak for audio-normalized lyric pulse
+    peak_rms = 1e-6
     try:
         for fi in range(n_frames):
             t = t0 + fi / FPS
             chunk = samples[start + fi * hop : start + fi * hop + hop * 2]
+            rms = float(np.sqrt(np.mean(np.square(chunk)))) if len(chunk) else 0.0
+            peak_rms = max(peak_rms * 0.995, rms, 1e-6)
+            audio_level = min(1.0, (rms / peak_rms) ** 0.85)
             smooth = 0.55 * smooth + 0.45 * band_energies(chunk, n_bars)
             frame = base.copy().convert("RGBA")
-            draw_kinetic_lyrics(frame, t)
+            draw_kinetic_lyrics(frame, t, audio_level=audio_level)
             d = ImageDraw.Draw(frame)
             draw_eq(d, smooth, (t - t0) / max(0.001, t1 - t0))
             proc.stdin.write(frame.convert("RGB").tobytes())

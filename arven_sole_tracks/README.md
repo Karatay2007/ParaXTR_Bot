@@ -13,3 +13,5 @@ Mobile'den short/uzun YouTube video istenince buradan kullanılır.
 - Takilsin_Diline.mp3 (2:26)
 - Takilsin_Diline_Yabanci.mp3 (1:16)
 - Teninde_Kal.mp3 (2:42)
+- Yuregimde_Gul_PART.mp3 (0:41)
+- Yuregimde_Gul_v2.mp3 (1:59)

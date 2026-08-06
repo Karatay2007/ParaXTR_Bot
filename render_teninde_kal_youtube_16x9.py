@@ -21,6 +21,7 @@ COVER = Path("/opt/cursor/artifacts/assets/arven-sole-cover.png")
 WAV = Path("/tmp/teninde.wav")
 FONT_OUTFIT = Path("/workspace/fonts/Outfit.ttf")
 FONT_SERIF = Path("/usr/share/fonts/truetype/noto/NotoSerifDisplay-Bold.ttf")
+FONT_LYRIC = Path("/usr/share/fonts/truetype/noto/NotoSansDisplay-Bold.ttf")
 ART = Path("/opt/cursor/artifacts")
 OUT = Path("/workspace/ArvenSole_TenindeKal_YOUTUBE_16x9.mp4")
 
@@ -36,11 +37,11 @@ TITLE = "TENİNDE KAL"
 ARTIST = "ARVEN SOLÉ"
 CREDIT = "SÖZ · MÜZİK   ARVEN SOLÉ"
 
-# Landscape cover layout — lyrics + EQ tight; credits breathe below
-LYRIC_Y = 620
-EQ_Y = 720
-EQ_H = 64
-CREDIT_TOP = 860
+# Pulled up like Short — lyrics+EQ high, credit stack, open air below
+LYRIC_Y = 470
+EQ_Y = 565
+EQ_H = 60
+CREDIT_TOP = 700
 PROGRESS_Y = 1025
 
 WORD_LEAD = 0.05
@@ -201,10 +202,10 @@ def draw_kinetic_lyrics(img: Image.Image, t: float, audio_level: float = 0.35) -
         return
 
     lvl = max(0.0, min(1.0, audio_level))
-    fsize = max(44, int(50 * (1.0 + 0.04 * lvl)))
-    fnt = font_path(FONT_OUTFIT, fsize)
-    tracking = 5
-    word_gap = 26
+    fsize = max(52, int(58 * (1.0 + 0.04 * lvl)))
+    fnt = font_path(FONT_LYRIC, fsize)
+    tracking = 4
+    word_gap = 24
 
     probe = ImageDraw.Draw(Image.new("RGBA", (8, 8)))
     texts = [w for _, _, w in words]
@@ -219,16 +220,21 @@ def draw_kinetic_lyrics(img: Image.Image, t: float, audio_level: float = 0.35) -
     bd = ImageDraw.Draw(bloom)
     cx = x
     for i, w in enumerate(texts):
-        _draw_spaced(bd, (cx, y), w, fnt, (*CREAM, int((40 + 50 * lvl) * alpha)), tracking)
+        _draw_spaced(bd, (cx, y), w, fnt, (*CREAM, int((50 + 55 * lvl) * alpha)), tracking)
         cx += word_widths[i] + word_gap
-    img.alpha_composite(bloom.filter(ImageFilter.GaussianBlur(12 + int(4 * lvl))))
+    img.alpha_composite(bloom.filter(ImageFilter.GaussianBlur(14 + int(4 * lvl))))
 
     stroke = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     sd = ImageDraw.Draw(stroke)
     cx = x
+    offsets = (
+        (-3, 0), (3, 0), (0, -3), (0, 3),
+        (-3, -3), (3, 3), (-3, 3), (3, -3),
+        (-2, 0), (2, 0), (0, -2), (0, 2),
+    )
     for i, w in enumerate(texts):
-        for ox, oy in ((-2, 0), (2, 0), (0, -2), (0, 2), (-2, -2), (2, 2)):
-            _draw_spaced(sd, (cx + ox, y + oy), w, fnt, (0, 0, 0, int(200 * alpha)), tracking)
+        for ox, oy in offsets:
+            _draw_spaced(sd, (cx + ox, y + oy), w, fnt, (0, 0, 0, int(220 * alpha)), tracking)
         cx += word_widths[i] + word_gap
     img.alpha_composite(stroke)
 
@@ -238,7 +244,7 @@ def draw_kinetic_lyrics(img: Image.Image, t: float, audio_level: float = 0.35) -
     for i, (ws, we, w) in enumerate(words):
         lead_s = ws - WORD_LEAD
         if t < lead_s:
-            col = (150, 145, 138, int(130 * alpha))
+            col = (210, 200, 188, int(200 * alpha))
             wy = y
         elif t < we:
             frac = (t - lead_s) / max(0.05, we - lead_s)
@@ -303,19 +309,24 @@ def base_landscape() -> Image.Image:
     overlay = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(overlay)
     # Soft top vignette
-    for yy in range(0, 160):
-        a = int(90 * (1 - yy / 160))
+    for yy in range(0, 120):
+        a = int(80 * (1 - yy / 120))
         d.line([(0, yy), (W, yy)], fill=(0, 0, 0, a))
-    # Soft bottom fade into credit zone
-    fade_start = CREDIT_TOP - 160
-    for yy in range(fade_start, H):
-        p = (yy - fade_start) / max(1, H - fade_start)
-        a = int(min(245, (p**1.25) * 255))
+    # Soft fade under credits — leave open air in lower frame
+    fade_start = CREDIT_TOP - 100
+    fade_end = min(H, CREDIT_TOP + 220)
+    for yy in range(fade_start, fade_end):
+        p = (yy - fade_start) / max(1, fade_end - fade_start)
+        a = int(min(210, (p**1.15) * 210))
         d.line([(0, yy), (W, yy)], fill=(0, 0, 0, a))
+    # Gentle darkening only at very bottom for progress readability
+    for yy in range(980, H):
+        p = (yy - 980) / max(1, H - 980)
+        d.line([(0, yy), (W, yy)], fill=(0, 0, 0, int(120 * p)))
     out = Image.alpha_composite(img.convert("RGBA"), overlay)
     d2 = ImageDraw.Draw(out)
 
-    line_y = CREDIT_TOP + 18
+    line_y = CREDIT_TOP + 12
     line_w = 64
     d2.line(
         ((W - line_w) // 2, line_y, (W + line_w) // 2, line_y),
@@ -323,17 +334,17 @@ def base_landscape() -> Image.Image:
         width=2,
     )
 
-    artist_fnt = font_path(FONT_SERIF, 40)
-    title_fnt = font_path(FONT_OUTFIT, 22)
-    credit_fnt = font_path(FONT_OUTFIT, 16)
+    artist_fnt = font_path(FONT_SERIF, 38)
+    title_fnt = font_path(FONT_OUTFIT, 20)
+    credit_fnt = font_path(FONT_OUTFIT, 15)
 
     def center_spaced(text: str, fnt, y: int, fill, tracking: int) -> None:
         tw = _measure_spaced(d2, text, fnt, tracking)
         _draw_spaced(d2, ((W - tw) // 2, y), text, fnt, fill, tracking)
 
-    center_spaced(ARTIST, artist_fnt, line_y + 22, WHITE, 5)
-    center_spaced(TITLE, title_fnt, line_y + 78, CREAM, 8)
-    center_spaced(CREDIT, credit_fnt, line_y + 118, MUTED, 3)
+    center_spaced(ARTIST, artist_fnt, line_y + 18, WHITE, 5)
+    center_spaced(TITLE, title_fnt, line_y + 68, CREAM, 8)
+    center_spaced(CREDIT, credit_fnt, line_y + 104, MUTED, 3)
     return out.convert("RGBA")
 
 

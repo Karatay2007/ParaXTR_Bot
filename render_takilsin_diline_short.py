@@ -26,6 +26,8 @@ FONT_OUTFIT = Path("/workspace/fonts/Outfit.ttf")
 FONT_SERIF = Path("/usr/share/fonts/truetype/noto/NotoSerifDisplay-Bold.ttf")
 FONT_LYRIC = Path("/usr/share/fonts/truetype/noto/NotoSansDisplay-Bold.ttf")
 FONT_BANNER = Path("/workspace/fonts/ArchivoBlack-Regular.ttf")
+ICON_THUMB = Path("/workspace/fonts/icons/thumb_up.png")
+ICON_BELL = Path("/workspace/fonts/icons/bell.png")
 ART = Path("/opt/cursor/artifacts")
 OUT_SHORT = Path("/workspace/ArvenSole_TakilsinDiline_SHORT.mp4")
 
@@ -257,7 +259,6 @@ def draw_eq(draw: ImageDraw.ImageDraw, vals: np.ndarray, progress: float) -> Non
 def _draw_mouse(d: ImageDraw.ImageDraw, x: int, y: int, press: float = 0.0) -> None:
     """Classic arrow mouse cursor."""
     s = 1.0 - 0.08 * press
-    tip = (x, y)
     pts = [
         (x, y),
         (x + int(4 * s), y + int(22 * s)),
@@ -271,42 +272,26 @@ def _draw_mouse(d: ImageDraw.ImageDraw, x: int, y: int, press: float = 0.0) -> N
     d.line(pts + [pts[0]], fill=(20, 20, 20, 255), width=2)
 
 
-def _draw_thumb(d: ImageDraw.ImageDraw, cx: int, cy: int, r: int, active: bool) -> None:
+def _paste_icon(layer: Image.Image, icon: Image.Image, cx: int, cy: int, size: int) -> None:
+    ic = icon.resize((size, size), Image.Resampling.LANCZOS)
+    layer.alpha_composite(ic, (cx - size // 2, cy - size // 2))
+
+
+def _circle_btn(d: ImageDraw.ImageDraw, cx: int, cy: int, r: int, active: bool, ring) -> None:
     d.ellipse(
         (cx - r, cy - r, cx + r, cy + r),
         fill=(255, 255, 255, 255),
-        outline=(230, 230, 230, 255),
+        outline=(225, 225, 225, 255),
         width=2,
     )
     if active:
-        d.ellipse((cx - r - 5, cy - r - 5, cx + r + 5, cy + r + 5), outline=(*LIKE_BLUE, 200), width=3)
-    blue = (*LIKE_BLUE, 255)
-    d.rounded_rectangle((cx - 13, cy - 1, cx + 14, cy + 18), radius=5, fill=blue)
-    d.rounded_rectangle((cx - 2, cy - 22, cx + 12, cy + 4), radius=7, fill=blue)
-
-
-def _draw_bell(d: ImageDraw.ImageDraw, cx: int, cy: int, r: int, active: bool) -> None:
-    d.ellipse(
-        (cx - r, cy - r, cx + r, cy + r),
-        fill=(255, 255, 255, 255),
-        outline=(230, 230, 230, 255),
-        width=2,
-    )
-    if active:
-        d.ellipse((cx - r - 5, cy - r - 5, cx + r + 5, cy + r + 5), outline=(80, 80, 80, 180), width=3)
-    ink = (70, 70, 70, 255)
-    d.pieslice((cx - 15, cy - 12, cx + 15, cy + 14), 200, 340, fill=ink)
-    d.ellipse((cx - 15, cy - 1, cx + 15, cy + 17), fill=ink)
-    d.ellipse((cx - 3, cy - 18, cx + 3, cy - 10), fill=ink)
-    d.ellipse((cx - 5, cy + 15, cx + 5, cy + 23), fill=ink)
+        d.ellipse((cx - r - 5, cy - r - 5, cx + r + 5, cy + r + 5), outline=(*ring, 210), width=3)
 
 
 def draw_subscribe_cta(img: Image.Image, t_local: float) -> None:
-    """Like | ABONE OL | Bell — one mouse clicks each in order; ABONE OLUNDU after click."""
-    # Timeline per cycle (4.8s): move+click like, sub, bell
+    """Original icon like/bell + ABONE OL; ABONE OLUNDU goes grey."""
     cycle = 4.8
     t = t_local % cycle
-    # segments: [0-1.6] like, [1.6-3.2] sub, [3.2-4.8] bell
     if t < 1.6:
         stage, local = 0, t / 1.6
     elif t < 3.2:
@@ -314,7 +299,6 @@ def draw_subscribe_cta(img: Image.Image, t_local: float) -> None:
     else:
         stage, local = 2, (t - 3.2) / 1.6
 
-    # travel 0-0.55, click 0.55-0.85, hold 0.85-1
     if local < 0.55:
         travel, press = local / 0.55, 0.0
     elif local < 0.85:
@@ -327,14 +311,13 @@ def draw_subscribe_cta(img: Image.Image, t_local: float) -> None:
     layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(layer)
 
-    like_r = int(42 + (7 * press if stage == 0 and local >= 0.55 else 0))
-    bell_r = int(42 + (7 * press if stage == 2 and local >= 0.55 else 0))
-    sub_scale = 1.0 + (0.07 * press if stage == 1 and local >= 0.55 else 0.0)
+    like_r = int(44 + (6 * press if stage == 0 and local >= 0.55 else 0))
+    bell_r = int(44 + (6 * press if stage == 2 and local >= 0.55 else 0))
+    sub_scale = 1.0 + (0.06 * press if stage == 1 and local >= 0.55 else 0.0)
 
     gap = 22
     label = "ABONE OLUNDU" if subscribed else "ABONE OL"
-    # wider when ABONE OLUNDU
-    sub_w = int((340 if subscribed else 300) * sub_scale)
+    sub_w = int((350 if subscribed else 300) * sub_scale)
     sub_h = int(72 * sub_scale)
     total_w = like_r * 2 + gap + sub_w + gap + bell_r * 2
     x0 = (W - total_w) // 2
@@ -344,27 +327,34 @@ def draw_subscribe_cta(img: Image.Image, t_local: float) -> None:
     sub_x = like_cx + like_r + gap
     sub_y = cy - sub_h // 2
     bell_cx = sub_x + sub_w + gap + bell_r
-    targets = [
-        (like_cx, cy),
-        (sub_x + sub_w // 2, cy),
-        (bell_cx, cy),
-    ]
-    # previous target for travel
+    targets = [(like_cx, cy), (sub_x + sub_w // 2, cy), (bell_cx, cy)]
     prev = targets[stage - 1] if stage > 0 else (targets[0][0] - 120, targets[0][1] + 40)
     cur = targets[stage]
     mx = int(prev[0] + (cur[0] - prev[0]) * travel)
     my = int(prev[1] + (cur[1] - prev[1]) * travel) + int(10 * (1 - press) if local >= 0.55 else 0)
 
-    d.rounded_rectangle(
-        (sub_x + 4, sub_y + 6, sub_x + sub_w + 4, sub_y + sub_h + 6),
-        radius=10,
-        fill=(0, 0, 0, 90),
-    )
-    _draw_thumb(d, like_cx, cy, like_r, stage == 0 and local >= 0.55)
-    # Red / dark-red when subscribed
-    btn_col = (200, 0, 0, 255) if subscribed else (255, 0, 0, 255)
+    # Like circle + original Material thumb icon
+    _circle_btn(d, like_cx, cy, like_r, stage == 0 and local >= 0.55, LIKE_BLUE)
+    thumb = Image.open(ICON_THUMB).convert("RGBA")
+    _paste_icon(layer, thumb, like_cx, cy, int(like_r * 1.15))
+
+    # Subscribe — red, then GREY when ABONE OLUNDU
+    if subscribed:
+        btn_col = (95, 95, 95, 255)
+        d.rounded_rectangle(
+            (sub_x + 3, sub_y + 5, sub_x + sub_w + 3, sub_y + sub_h + 5),
+            radius=10,
+            fill=(0, 0, 0, 70),
+        )
+    else:
+        btn_col = (255, 0, 0, 255)
+        d.rounded_rectangle(
+            (sub_x + 3, sub_y + 5, sub_x + sub_w + 3, sub_y + sub_h + 5),
+            radius=10,
+            fill=(0, 0, 0, 90),
+        )
     d.rounded_rectangle((sub_x, sub_y, sub_x + sub_w, sub_y + sub_h), radius=10, fill=btn_col)
-    fnt = font_path(FONT_DIR / "Inter-Bold.ttf", int(28 * sub_scale if subscribed else 32 * sub_scale))
+    fnt = font_path(FONT_DIR / "Inter-Bold.ttf", int(27 * sub_scale if subscribed else 32 * sub_scale))
     bb = d.textbbox((0, 0), label, font=fnt)
     tw, th = bb[2] - bb[0], bb[3] - bb[1]
     d.text(
@@ -373,102 +363,82 @@ def draw_subscribe_cta(img: Image.Image, t_local: float) -> None:
         font=fnt,
         fill=(255, 255, 255, 255),
     )
-    _draw_bell(d, bell_cx, cy, bell_r, stage == 2 and local >= 0.55)
 
-    # Single mouse only — no static hands
+    # Bell circle + original Material bell icon
+    _circle_btn(d, bell_cx, cy, bell_r, stage == 2 and local >= 0.55, (70, 70, 70))
+    bell = Image.open(ICON_BELL).convert("RGBA")
+    _paste_icon(layer, bell, bell_cx, cy, int(bell_r * 1.15))
+
     _draw_mouse(d, mx + 8, my + 6, press=press if local >= 0.55 else 0.0)
     img.alpha_composite(layer)
 
 
 def draw_top_banner(img: Image.Image, t_local: float = 0.0) -> None:
-    """Designed ribbon CTA — angled ends, accent rules, glow type."""
-    beat = 0.5 + 0.5 * math.sin(t_local * 2.0)
-    scale = 1.0 + 0.02 * beat
+    """No plate — animated cream type over song background."""
+    # Soft float + letter shimmer
+    bob = math.sin(t_local * 2.2) * 6
+    pulse = 0.5 + 0.5 * math.sin(t_local * 3.0)
+    scale = 1.0 + 0.04 * pulse
 
-    fnt = font_path(FONT_BANNER, int(46 * scale))
-    tracking = 10
+    fnt = font_path(FONT_BANNER, int(52 * scale))
+    tracking = 12
     text = "DEVAMI YAYINDA"
     probe = ImageDraw.Draw(Image.new("RGBA", (8, 8)))
     tw = _measure_spaced(probe, text, fnt, tracking)
     thb = probe.textbbox((0, 0), text, font=fnt)
     th = thb[3] - thb[1]
-
-    box_w = min(1000, max(tw + 160, 900))
-    box_h = 108
-    bx = (W - box_w) // 2
-    by = BANNER_Y - int(2 * beat)
-    notch = 28  # angled ribbon ends
+    x = (W - tw) // 2
+    y = int(BANNER_Y + 20 + bob)
 
     cream = (
-        min(255, int(248 + 6 * beat)),
-        min(255, int(236 + 5 * beat)),
-        min(255, int(216 + 4 * beat)),
+        min(255, int(245 + 10 * pulse)),
+        min(255, int(232 + 8 * pulse)),
+        min(255, int(210 + 6 * pulse)),
         255,
     )
-    dark = (12, 10, 8, 255)
 
     layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    d = ImageDraw.Draw(layer)
 
-    # Shadow ribbon
-    shadow = [
-        (bx + notch + 5, by + 8),
-        (bx + box_w - notch + 5, by + 8),
-        (bx + box_w + 5, by + box_h // 2 + 8),
-        (bx + box_w - notch + 5, by + box_h + 8),
-        (bx + notch + 5, by + box_h + 8),
-        (bx + 5, by + box_h // 2 + 8),
-    ]
-    d.polygon(shadow, fill=(0, 0, 0, 160))
+    # Soft readability wash ONLY behind glyphs (very light), not a solid bar
+    wash = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    wd = ImageDraw.Draw(wash)
+    pad = 28
+    for yy in range(y - pad, y + th + pad):
+        p = abs((yy - (y + th / 2)) / (th / 2 + pad))
+        a = int(70 * max(0.0, 1.0 - p))
+        wd.line([(x - 40, yy), (x + tw + 40, yy)], fill=(0, 0, 0, a))
+    layer.alpha_composite(wash)
 
-    # Main ribbon (chevron ends)
-    ribbon = [
-        (bx + notch, by),
-        (bx + box_w - notch, by),
-        (bx + box_w, by + box_h // 2),
-        (bx + box_w - notch, by + box_h),
-        (bx + notch, by + box_h),
-        (bx, by + box_h // 2),
-    ]
-    d.polygon(ribbon, fill=cream)
-    d.line(ribbon + [ribbon[0]], fill=dark, width=4)
+    # Glow bloom
+    bloom = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    bd = ImageDraw.Draw(bloom)
+    _draw_spaced(bd, (x, y), text, fnt, (*cream[:3], int(110 + 60 * pulse)), tracking)
+    layer.alpha_composite(bloom.filter(ImageFilter.GaussianBlur(10 + int(4 * pulse))))
 
-    # Inner accent rules
-    d.line((bx + notch + 24, by + 14, bx + box_w - notch - 24, by + 14), fill=dark, width=2)
-    d.line((bx + notch + 24, by + box_h - 14, bx + box_w - notch - 24, by + box_h - 14), fill=dark, width=2)
-    # Center diamonds
-    mid = W // 2
-    for dx in (-tw // 2 - 36, tw // 2 + 36):
-        d.polygon(
-            [
-                (mid + dx, by + box_h // 2 - 6),
-                (mid + dx + 6, by + box_h // 2),
-                (mid + dx, by + box_h // 2 + 6),
-                (mid + dx - 6, by + box_h // 2),
-            ],
-            fill=dark,
-        )
+    # Heavy black stroke for contrast on any bg
+    stroke = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    sd = ImageDraw.Draw(stroke)
+    for ox, oy in (
+        (-3, 0), (3, 0), (0, -3), (0, 3),
+        (-3, -3), (3, 3), (-3, 3), (3, -3),
+        (-2, 0), (2, 0), (0, -2), (0, 2),
+    ):
+        _draw_spaced(sd, (x + ox, y + oy), text, fnt, (0, 0, 0, 230), tracking)
+    layer.alpha_composite(stroke)
 
-    # Soft glow under type
-    glow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    gd = ImageDraw.Draw(glow)
-    _draw_spaced(
-        gd,
-        (bx + (box_w - tw) // 2, by + (box_h - th) // 2 - 2),
-        text,
-        fnt,
-        (255, 255, 255, 90),
-        tracking,
-    )
-    layer.alpha_composite(glow.filter(ImageFilter.GaussianBlur(6)))
-    _draw_spaced(
-        d,
-        (bx + (box_w - tw) // 2, by + (box_h - th) // 2 - 2),
-        text,
-        fnt,
-        dark,
-        tracking,
-    )
+    # Main fill
+    fill = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    fd = ImageDraw.Draw(fill)
+    _draw_spaced(fd, (x, y), text, fnt, cream, tracking)
+    layer.alpha_composite(fill)
+
+    # Thin cream underline that grows/shrinks
+    ud = ImageDraw.Draw(layer)
+    uw = int(tw * (0.55 + 0.2 * pulse))
+    ux = x + (tw - uw) // 2
+    uy = y + th + 10
+    ud.rounded_rectangle((ux, uy, ux + uw, uy + 4), radius=2, fill=(*cream[:3], 220))
+
     img.alpha_composite(layer)
 
 

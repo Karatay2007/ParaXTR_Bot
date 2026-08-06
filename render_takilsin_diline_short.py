@@ -432,12 +432,12 @@ def draw_top_banner(img: Image.Image, t_local: float = 0.0) -> None:
     _draw_spaced(fd, (x, y), text, fnt, cream, tracking)
     layer.alpha_composite(fill)
 
-    # Thin cream underline that grows/shrinks
+    # Thin cream underline — sit clearly below the type, not stuck to it
     ud = ImageDraw.Draw(layer)
-    uw = int(tw * (0.55 + 0.2 * pulse))
+    uw = int(tw * (0.50 + 0.18 * pulse))
     ux = x + (tw - uw) // 2
-    uy = y + th + 10
-    ud.rounded_rectangle((ux, uy, ux + uw, uy + 4), radius=2, fill=(*cream[:3], 220))
+    uy = y + th + 32
+    ud.rounded_rectangle((ux, uy, ux + uw, uy + 3), radius=2, fill=(*cream[:3], 200))
 
     img.alpha_composite(layer)
 

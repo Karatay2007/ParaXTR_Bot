@@ -31,21 +31,26 @@ TITLE = "Teninde Kal"
 ARTIST = "Arven Solé"
 CREDIT = "Söz-Müzik: Arven Solé"
 
-# Hottest chorus block (~2:00–2:35)
-SHORT_T0 = 120.0
-SHORT_T1 = 155.5
+# Hottest chorus block — start just before first hook word
+SHORT_T0 = 120.7
+SHORT_T1 = 154.5
 
-# Tight cues aligned to vocal phrases (absolute song time)
-LYRICS: list[tuple[float, float, str]] = [
-    (120.00, 123.00, "Seninle kal bu gece"),
-    (123.00, 126.80, "Aklım sende kayboldu"),
-    (126.80, 130.00, "Dudaklar yalan söylemesin"),
-    (130.00, 133.80, "Kalbin burada olsun"),
-    (133.80, 137.00, "Seninle kal bu gece"),
-    (137.00, 141.60, "Şehir dışarıda uyusun"),
-    (141.60, 144.80, "İkimiz bu odada"),
-    (144.80, 148.80, "Sabahı unutalım"),
-    (148.80, 155.50, "Seninle kal bu gece"),
+# Highlight starts slightly early so the word lights with the sung onset (feels instant).
+WORD_LEAD = 0.05
+
+# Word clocks from Whisper on hook clip (offset +118s), Senin/de → Teninle.
+# Each word: (start, end, text). Ends clamped to next word.
+LINES: list[list[tuple[float, float, str]]] = [
+    [(120.90, 121.95, "Teninle"), (121.95, 122.28, "kal"), (122.28, 122.60, "bu"), (122.60, 123.25, "gece")],
+    [(124.10, 124.80, "Aklım"), (124.80, 125.42, "sende"), (125.42, 126.70, "kayboldu")],
+    [(127.44, 128.32, "Dudaklar"), (128.32, 128.80, "yalan"), (128.80, 130.55, "söylemesin")],
+    [(130.55, 131.55, "Kalbin"), (132.30, 133.00, "burada"), (133.00, 134.30, "olsun")],
+    [(134.55, 135.75, "Teninle"), (135.75, 136.25, "kal"), (136.25, 136.58, "bu"), (136.58, 137.20, "gece")],
+    [(137.48, 138.18, "Şehir"), (138.18, 139.00, "dışarıda"), (139.00, 141.70, "uyusun")],
+    [(141.98, 142.68, "İkimiz"), (142.68, 143.16, "bu"), (143.16, 144.10, "odada")],
+    [(144.66, 145.76, "Sabahı"), (145.76, 147.20, "unutalım")],
+    # last hook: "bu" must NOT swallow the held "gece"
+    [(148.00, 149.05, "Teninle"), (149.05, 149.55, "kal"), (149.55, 150.05, "bu"), (150.05, 151.40, "gece")],
 ]
 
 
@@ -86,89 +91,83 @@ def band_energies(chunk: np.ndarray, n_bars: int = 24) -> np.ndarray:
     return 0.12 + 0.88 * np.power(np.clip(vals, 0, 1), 0.6)
 
 
-def lyric_at(t: float) -> tuple[str | None, float, float]:
-    for s, e, text in LYRICS:
-        if s <= t < e:
-            return text, s, e
-    return None, 0.0, 0.0
+def _display_word(raw: str) -> str:
+    """Force hook spelling — never Seninle / Senin de."""
+    key = raw.strip().casefold()
+    if key in {"seninle", "senin", "seninde", "senin de"}:
+        return "Teninle"
+    return raw.strip()
 
 
-def ease_out_back(x: float) -> float:
-    c1, c3 = 1.70158, 2.70158
-    return 1 + c3 * (x - 1) ** 3 + c1 * (x - 1) ** 2
+def line_at(t: float) -> list[tuple[float, float, str]] | None:
+    """Return the active line's word timings for absolute time t."""
+    for words in LINES:
+        if words[0][0] - 0.10 <= t <= words[-1][1] + 0.14:
+            return [(s, e, _display_word(w)) for s, e, w in words]
+    return None
 
 
 def draw_kinetic_lyrics(img: Image.Image, t: float, audio_level: float = 0.35) -> None:
-    """Designed karaoke: no underline strip. Text pulses with audio."""
-    cur, s, e = lyric_at(t)
-    if not cur:
+    """Instant per-word highlight from clocks. No underline strip."""
+    words = line_at(t)
+    if not words:
         return
 
-    dur = max(0.05, e - s)
-    local = t - s
-    # Soft designed entrance (no bounce chaos)
-    if local < 0.28:
-        p = min(1.0, local / 0.28)
-        pop = 0.94 + 0.06 * (1 - (1 - p) ** 3)
-        alpha = min(1.0, p / 0.15)
-    else:
-        pop = 1.0
-        alpha = 1.0
-    if e - t < 0.22:
-        alpha *= max(0.0, (e - t) / 0.22)
+    line_start, line_end = words[0][0], words[-1][1]
+    alpha = 1.0
+    if t < line_start - WORD_LEAD:
+        alpha = max(0.0, 1.0 - (line_start - WORD_LEAD - t) / 0.08)
+    elif t > line_end:
+        alpha = max(0.0, 1.0 - (t - line_end) / 0.12)
+    if alpha <= 0.01:
+        return
 
-    # Audio integration: size + lift follow loudness
     lvl = max(0.0, min(1.0, audio_level))
-    pulse = 1.0 + 0.07 * lvl
-    fsize = max(42, int(58 * pop * pulse))
+    fsize = max(46, int(58 * (1.0 + 0.05 * lvl)))
     fnt = font("Inter-Bold.ttf", fsize)
 
-    words = cur.split()
+    texts = [w for _, _, w in words]
     space_bb = ImageDraw.Draw(Image.new("RGBA", (8, 8))).textbbox((0, 0), " ", font=fnt)
     space_w = space_bb[2] - space_bb[0]
     word_widths = []
-    for w in words:
+    for w in texts:
         bb = ImageDraw.Draw(Image.new("RGBA", (8, 8))).textbbox((0, 0), w, font=fnt)
         word_widths.append(bb[2] - bb[0])
-    total = sum(word_widths) + space_w * max(0, len(words) - 1)
-    # measure height from first word
-    th = ImageDraw.Draw(Image.new("RGBA", (8, 8))).textbbox((0, 0), words[0] if words else "A", font=fnt)
+    total = sum(word_widths) + space_w * max(0, len(texts) - 1)
+    th = ImageDraw.Draw(Image.new("RGBA", (8, 8))).textbbox((0, 0), texts[0], font=fnt)
     th = th[3] - th[1]
     x = (W - total) // 2
-    y = 900 - th // 2 - int(6 * lvl)  # rises slightly with bass/energy
+    y = 900 - th // 2 - int(8 * lvl)
 
-    # Soft cream bloom only (no band / no underline strip)
+    full = " ".join(texts)
     bloom = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     ImageDraw.Draw(bloom).text(
-        (x, y), cur, font=fnt, fill=(*CREAM, int((55 + 55 * lvl) * alpha))
+        (x, y), full, font=fnt, fill=(*CREAM, int((50 + 60 * lvl) * alpha))
     )
-    img.alpha_composite(bloom.filter(ImageFilter.GaussianBlur(10 + int(4 * lvl))))
+    img.alpha_composite(bloom.filter(ImageFilter.GaussianBlur(10 + int(5 * lvl))))
 
-    # Clean dark stroke
     stroke = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     sd = ImageDraw.Draw(stroke)
     cx = x
-    for i, w in enumerate(words):
+    for i, w in enumerate(texts):
         for ox, oy in ((-3, 0), (3, 0), (0, -3), (0, 3), (-2, -2), (2, 2), (-2, 2), (2, -2)):
             sd.text((cx + ox, y + oy), w, font=fnt, fill=(0, 0, 0, int(210 * alpha)))
         cx += word_widths[i] + space_w
     img.alpha_composite(stroke)
 
-    # Word karaoke synced to cue timing; active word reacts to audio
-    prog = min(1.0, max(0.0, local / dur))
-    active_f = prog * max(1, len(words))
+    # Active word = clock window (with lead). Instant — not a linear wipe over the line.
     layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     ld = ImageDraw.Draw(layer)
     cx = x
-    for i, w in enumerate(words):
-        word_prog = max(0.0, min(1.0, active_f - i))
-        if word_prog <= 0:
-            col = (150, 148, 145, int(110 * alpha))
+    for i, (ws, we, w) in enumerate(words):
+        lead_s = ws - WORD_LEAD
+        if t < lead_s:
+            col = (145, 142, 138, int(120 * alpha))
             wy = y
-        elif word_prog < 1.0:
-            # live word — cream + audio lift
+        elif t < we:
+            frac = (t - lead_s) / max(0.05, we - lead_s)
             col = (*CREAM, int(255 * alpha))
-            wy = y - int((4 + 10 * lvl) * math.sin(word_prog * math.pi))
+            wy = y - int((6 + 12 * lvl) * math.sin(min(1.0, frac) * math.pi))
         else:
             col = (255, 255, 255, int(255 * alpha))
             wy = y
@@ -249,8 +248,24 @@ def render_short() -> None:
     samples, rate = ensure_wav()
     duration = len(samples) / rate
     t0, t1 = SHORT_T0, min(SHORT_T1, duration)
-    n_frames = int(round((t1 - t0) * FPS))
+    clip_dur = t1 - t0
+    n_frames = int(round(clip_dur * FPS))
     print(f"Rendering SHORT {t0:.1f}-{t1:.1f}s ({n_frames}f)", flush=True)
+
+    # Pre-cut audio so mux has zero seek drift vs frame clock
+    audio_clip = Path("/tmp/teninde_short_clip.wav")
+    subprocess.check_call(
+        [
+            "ffmpeg", "-y",
+            "-ss", f"{t0:.3f}", "-t", f"{clip_dur:.3f}",
+            "-i", str(AUDIO),
+            "-ac", "2", "-ar", "44100",
+            str(audio_clip),
+        ],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
     base = base_vertical()
     hop = rate // FPS
     n_bars = 24
@@ -258,7 +273,7 @@ def render_short() -> None:
     cmd = [
         "ffmpeg", "-y",
         "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r", str(FPS), "-i", "-",
-        "-ss", str(t0), "-t", str(t1 - t0), "-i", str(AUDIO),
+        "-i", str(audio_clip),
         "-map", "0:v", "-map", "1:a",
         "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p",
         "-c:a", "aac", "-b:a", "192k",
@@ -268,7 +283,6 @@ def render_short() -> None:
     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
     assert proc.stdin is not None
     start = int(t0 * rate)
-    # Running peak for audio-normalized lyric pulse
     peak_rms = 1e-6
     try:
         for fi in range(n_frames):
@@ -281,7 +295,7 @@ def render_short() -> None:
             frame = base.copy().convert("RGBA")
             draw_kinetic_lyrics(frame, t, audio_level=audio_level)
             d = ImageDraw.Draw(frame)
-            draw_eq(d, smooth, (t - t0) / max(0.001, t1 - t0))
+            draw_eq(d, smooth, (t - t0) / max(0.001, clip_dur))
             proc.stdin.write(frame.convert("RGB").tobytes())
             if fi % 48 == 0:
                 print(f"  {fi}/{n_frames} ({100*fi/n_frames:.0f}%)", flush=True)

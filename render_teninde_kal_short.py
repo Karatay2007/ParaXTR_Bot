@@ -98,94 +98,108 @@ def ease_out_back(x: float) -> float:
 
 
 def draw_kinetic_lyrics(img: Image.Image, t: float) -> None:
-    """No boring box: stroke text, cream karaoke wipe, bloom, pop-in, sweep bar."""
+    """Visible kinetic lyrics: band, bloom, word karaoke, fat underline."""
     cur, s, e = lyric_at(t)
     if not cur:
         return
 
     dur = max(0.05, e - s)
     local = t - s
-    # Entrance pop (0–0.35s)
-    if local < 0.35:
-        pop = ease_out_back(min(1.0, local / 0.35))
-        alpha = min(1.0, local / 0.18)
+    if local < 0.4:
+        p = min(1.0, local / 0.4)
+        pop = 0.7 + 0.45 * math.sin(p * math.pi * 0.5) + 0.15 * math.sin(p * math.pi)
+        alpha = min(1.0, p / 0.2)
     else:
         pop = 1.0
         alpha = 1.0
-    # Exit fade last 0.25s
-    if e - t < 0.25:
-        alpha *= max(0.0, (e - t) / 0.25)
+    if e - t < 0.28:
+        alpha *= max(0.0, (e - t) / 0.28)
 
-    base_size = 56
-    fsize = max(36, int(base_size * (0.86 + 0.14 * pop)))
+    fsize = max(40, int(64 * pop))
     fnt = font("Inter-Bold.ttf", fsize)
 
-    # Measure
-    probe = Image.new("RGBA", (W, 240), (0, 0, 0, 0))
-    pd = ImageDraw.Draw(probe)
-    bbox = pd.textbbox((0, 0), cur, font=fnt)
+    probe = Image.new("RGBA", (W, 300), (0, 0, 0, 0))
+    bbox = ImageDraw.Draw(probe).textbbox((0, 0), cur, font=fnt)
     tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
-    x = (W - tw) // 2
-    y = 900 - th // 2
+    y = 880 - th // 2
 
-    # Soft bloom (blurred cream silhouette) — depth, not neon glow
+    # Dark atmospheric band + cream side rails
+    band = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    bd = ImageDraw.Draw(band)
+    by0, by1 = y - 40, y + th + 50
+    mid = (by0 + by1) / 2
+    half = (by1 - by0) / 2 + 1e-6
+    for yy in range(by0, by1):
+        a = int(170 * alpha * (1 - abs((yy - mid) / half) * 0.35))
+        bd.line((0, yy, W, yy), fill=(0, 0, 0, max(0, min(200, a))))
+    bd.rectangle((0, by0 + 8, 8, by1 - 8), fill=(*CREAM, int(220 * alpha)))
+    bd.rectangle((W - 8, by0 + 8, W, by1 - 8), fill=(*CREAM, int(220 * alpha)))
+    img.alpha_composite(band)
+
+    words = cur.split()
+    space_w = ImageDraw.Draw(Image.new("RGBA", (8, 8))).textbbox((0, 0), " ", font=fnt)
+    space_w = space_w[2] - space_w[0]
+    word_widths = []
+    for w in words:
+        bb = ImageDraw.Draw(Image.new("RGBA", (8, 8))).textbbox((0, 0), w, font=fnt)
+        word_widths.append(bb[2] - bb[0])
+    total = sum(word_widths) + space_w * max(0, len(words) - 1)
+    x = (W - total) // 2
+
+    # Bloom under full line
     bloom = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    bd = ImageDraw.Draw(bloom)
-    bd.text((x, y), cur, font=fnt, fill=(*CREAM, int(90 * alpha)))
-    bloom = bloom.filter(ImageFilter.GaussianBlur(radius=10))
-    img.alpha_composite(bloom)
+    ImageDraw.Draw(bloom).text((x, y), cur, font=fnt, fill=(*CREAM, int(150 * alpha)))
+    img.alpha_composite(bloom.filter(ImageFilter.GaussianBlur(18)))
 
-    # Dark stroke / outline for readability (no plate box)
+    # Thick outline per word
     stroke = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     sd = ImageDraw.Draw(stroke)
-    for ox, oy in (
-        (-3, 0),
-        (3, 0),
-        (0, -3),
-        (0, 3),
-        (-2, -2),
-        (2, -2),
-        (-2, 2),
-        (2, 2),
-    ):
-        sd.text((x + ox, y + oy), cur, font=fnt, fill=(0, 0, 0, int(220 * alpha)))
+    cx = x
+    for i, w in enumerate(words):
+        for ox in range(-5, 6):
+            for oy in range(-5, 6):
+                if ox * ox + oy * oy <= 25:
+                    sd.text((cx + ox, y + oy), w, font=fnt, fill=(0, 0, 0, int(240 * alpha)))
+        cx += word_widths[i] + space_w
     img.alpha_composite(stroke)
 
-    # Base white text
-    base = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    ImageDraw.Draw(base).text((x, y), cur, font=fnt, fill=(255, 255, 255, int(255 * alpha)))
-    img.alpha_composite(base)
-
-    # Cream karaoke wipe (reveals over cue duration)
+    # Word karaoke
     prog = min(1.0, max(0.0, local / dur))
-    wipe_w = max(1, int(tw * prog))
-    cream_full = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    ImageDraw.Draw(cream_full).text((x, y), cur, font=fnt, fill=(*CREAM, int(255 * alpha)))
-    mask = Image.new("L", (W, H), 0)
-    ImageDraw.Draw(mask).rectangle((x - 4, y - 8, x + wipe_w + 4, y + th + 16), fill=255)
-    cream_part = Image.composite(cream_full, Image.new("RGBA", (W, H), (0, 0, 0, 0)), mask)
-    img.alpha_composite(cream_part)
+    active_f = prog * max(1, len(words))
+    layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    ld = ImageDraw.Draw(layer)
+    cx = x
+    for i, w in enumerate(words):
+        word_prog = max(0.0, min(1.0, active_f - i))
+        if word_prog <= 0:
+            col = (170, 170, 170, int(130 * alpha))
+            wy = y
+        elif word_prog < 1:
+            col = (*CREAM, int(255 * alpha))
+            wy = y - int(10 * math.sin(word_prog * math.pi))
+        else:
+            col = (255, 255, 255, int(255 * alpha))
+            wy = y
+        ld.text((cx, wy), w, font=fnt, fill=col)
+        cx += word_widths[i] + space_w
+    img.alpha_composite(layer)
 
-    # Sweep underline
-    ly = y + th + 14
-    pad = 12
-    line_layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    ld = ImageDraw.Draw(line_layer)
-    ld.line((x - pad, ly, x + tw + pad, ly), fill=(70, 65, 58, int(100 * alpha)), width=3)
-    ld.line(
-        (x - pad, ly, x - pad + int((tw + 2 * pad) * prog), ly),
-        fill=(*CREAM, int(255 * alpha)),
-        width=3,
-    )
-    # Side accent ticks
-    tick = int(10 * pop)
-    ld.line((x - pad - 8, ly - tick, x - pad - 8, ly + tick), fill=(*CREAM, int(200 * alpha)), width=3)
-    ld.line(
-        (x + tw + pad + 8, ly - tick, x + tw + pad + 8, ly + tick),
-        fill=(*CREAM, int(200 * alpha)),
-        width=3,
-    )
-    img.alpha_composite(line_layer)
+    # Fat underline + diamonds
+    ly = y + th + 18
+    pad = 16
+    line = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    ld = ImageDraw.Draw(line)
+    full = total + 2 * pad
+    x0 = x - pad
+    ld.line((x0, ly, x0 + full, ly), fill=(60, 55, 50, int(120 * alpha)), width=5)
+    ld.line((x0, ly, x0 + int(full * prog), ly), fill=(*CREAM, int(255 * alpha)), width=5)
+    for dx in (x0, x0 + int(full * prog)):
+        ld.polygon(
+            [(dx, ly - 7), (dx + 7, ly), (dx, ly + 7), (dx - 7, ly)],
+            fill=(*CREAM, int(255 * alpha)),
+        )
+    img.alpha_composite(line)
+
 
 
 def draw_eq(draw: ImageDraw.ImageDraw, vals: np.ndarray, progress: float) -> None:

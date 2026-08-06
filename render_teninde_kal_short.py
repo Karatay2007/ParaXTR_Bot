@@ -137,23 +137,12 @@ def draw_kinetic_lyrics(img: Image.Image, t: float, audio_level: float = 0.35) -
     x = (W - total) // 2
     y = 900 - th // 2 - int(6 * lvl)  # rises slightly with bass/energy
 
-    # Soft readability veil only (no hard plate, no side rails, no underline)
-    veil = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    vd = ImageDraw.Draw(veil)
-    by0, by1 = y - 28, y + th + 28
-    mid = (by0 + by1) / 2
-    half = (by1 - by0) / 2 + 1e-6
-    for yy in range(by0, by1):
-        a = int((95 + 35 * lvl) * alpha * (1 - abs((yy - mid) / half) * 0.55))
-        vd.line((80, yy, W - 80, yy), fill=(0, 0, 0, max(0, min(160, a))))
-    img.alpha_composite(veil)
-
-    # Gentle cream bloom tied to audio
+    # Soft cream bloom only (no band / no underline strip)
     bloom = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     ImageDraw.Draw(bloom).text(
-        (x, y), cur, font=fnt, fill=(*CREAM, int((70 + 70 * lvl) * alpha))
+        (x, y), cur, font=fnt, fill=(*CREAM, int((55 + 55 * lvl) * alpha))
     )
-    img.alpha_composite(bloom.filter(ImageFilter.GaussianBlur(12 + int(6 * lvl))))
+    img.alpha_composite(bloom.filter(ImageFilter.GaussianBlur(10 + int(4 * lvl))))
 
     # Clean dark stroke
     stroke = Image.new("RGBA", (W, H), (0, 0, 0, 0))

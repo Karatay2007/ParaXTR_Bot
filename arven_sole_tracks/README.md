@@ -17,3 +17,4 @@ Mobile'den short/uzun YouTube video istenince buradan kullanılır.
 - Yuregimde_Gul_v2.mp3 (1:59)
 - Yuregimde_Gul_v3.mp3 (1:01) — yeni yatak; Extend brief: Yuregimde_Gul_EXTEND_BRIEF.md
 - Yasiyor_Sanma_BRIEF.md — yanık yeni parça konsepti
+- Nefesim_Daraliyor.mp3 (3:27)

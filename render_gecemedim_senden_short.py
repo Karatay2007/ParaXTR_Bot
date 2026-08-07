@@ -46,20 +46,19 @@ CREDIT_TOP = 1220
 CTA_Y = 1585
 PROGRESS_Y = 1785
 
-# Hottest chorus 2 — Geçemedim senden / Kaldım geride
-SHORT_T0 = 118.8
-SHORT_T1 = 155.2
+# Chorus from 1:04 — Geçemedim senden / Kaldım geride (no DEVAMI YAYINDA)
+SHORT_T0 = 64.0
+SHORT_T1 = 92.0
 WORD_LEAD = 0.05
 
 LINES: list[list[tuple[float, float, str]]] = [
-    [(119.00, 119.82, "Geçemedim"), (119.82, 121.16, "senden")],
-    [(122.04, 122.94, "Kaldım"), (122.94, 124.20, "geride")],
-    [(125.35, 125.98, "Bir"), (125.98, 126.84, "kırgın"), (126.84, 127.56, "var"), (127.56, 129.20, "her"), (129.20, 129.68, "bir"), (129.68, 130.96, "köşede")],
-    [(132.25, 132.88, "Göz"), (132.88, 133.24, "göre"), (133.24, 133.64, "göre"), (133.64, 134.56, "bitti")],
-    [(135.52, 136.38, "Bu"), (136.38, 138.08, "hikaye")],
-    [(139.04, 140.40, "Değmedi"), (140.40, 142.22, "hiç"), (142.22, 142.50, "o"), (142.50, 143.84, "verdiğin"), (143.84, 144.74, "söze")],
-    [(144.74, 147.24, "Geçemedim"), (147.24, 149.02, "senden")],
-    [(152.42, 153.82, "Kaldım"), (153.82, 154.82, "geride")],
+    [(64.04, 65.14, "sonunu")],
+    [(65.76, 66.70, "Geçemedim"), (66.70, 68.28, "senden")],
+    [(68.28, 69.78, "Kaldım"), (69.78, 71.16, "geride")],
+    [(72.14, 72.84, "Bir"), (72.84, 73.70, "kırgın"), (73.70, 74.36, "var"), (74.36, 76.08, "her"), (76.08, 76.60, "bir"), (76.60, 77.84, "köşede")],
+    [(79.04, 79.74, "Göz"), (79.74, 80.16, "göre"), (80.16, 80.56, "göre"), (80.56, 81.44, "bitti")],
+    [(82.62, 83.32, "Bu"), (83.32, 84.88, "hikaye")],
+    [(85.84, 87.14, "Değmedi"), (87.14, 89.02, "hiç"), (89.02, 89.38, "o"), (89.38, 90.70, "verdiğin"), (90.70, 91.52, "söze")],
 ]
 
 
@@ -510,7 +509,6 @@ def render_short() -> None:
             audio_level = min(1.0, (rms / peak_rms) ** 0.85)
             smooth = 0.55 * smooth + 0.45 * band_energies(chunk, n_bars)
             frame = base.copy()
-            draw_top_banner(frame, t_local=t_local)
             draw_subscribe_cta(frame, t_local=t_local)
             draw_kinetic_lyrics(frame, t, audio_level=audio_level)
             d = ImageDraw.Draw(frame)

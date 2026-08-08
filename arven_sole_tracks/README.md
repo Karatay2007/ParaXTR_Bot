@@ -19,3 +19,4 @@ Mobile'den short/uzun YouTube video istenince buradan kullanılır.
 - Yasiyor_Sanma_BRIEF.md — yanık yeni parça konsepti
 - Nefesim_Daraliyor.mp3 (3:27)
 - Unutamadim_Seni.mp3 (3:36) — unutmadımseni2 upload; hook: Unutamadım seni
+- Kahpe_Insan.mp3 (4:11)

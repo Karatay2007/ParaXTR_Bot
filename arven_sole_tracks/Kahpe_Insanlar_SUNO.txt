@@ -25,82 +25,81 @@ LYRICS (kopyala)
 ============================================================
 [Verse 1]
 Yüzüne gülüyor, arkadan bakıyor
-Dostum diye tuttun, eli cebinde
-Sözü tatlı, niyeti başka yerde
-Yanında duruyor, hesabı kafasında
+Dostum diye tuttun, hesabını yazıyor
+Sözü tatlı gelir, niyeti soğuk
+Masada kardeşsin, kapıda yok
 
-Gözü dolu ama kalbi boş
-İhtiyacın bitince adı yok
-Masada aynı lokmayı bölüyor
-Kapıda çıkınca seni siliyor
+Gözü dolu gibi, kalbi bomboş
+İhtiyacın bitince adı bile yok
+Aynı lokmayı seninle böler
+Kapıdan çıkınca seni siler
 
 [Pre-Chorus]
 Gülümsüyor, eli bıçak gibi
-"Kardeşim" diyor, dili yalan gibi
-Güvenme o sese, o seste zehir var
-Bugün yanında, yarın karşıda
+Kardeşim diyor, dili yalan gibi
+O seste zehir var, duyma o sesi
+Bugün yanında, yarın ötesi
 
 [Chorus]
 Kahpe insan, kahpe insan
-Yüzün başka, için başka
+Yüzü başka, içi başka
 Kahpe insan, kahpe insan
 Dost gibi durur, arkanı kaçar
 
 Kahpe insan, kahpe insan
-Sözü büyük, sadakati yok
+Sözü büyük, sadakat yok
 Kahpe insan, kahpe insan
-Gözün açık, kalbin soğuk
+Gözü açık, kalbi soğuk
 
 [Verse 2]
-Para konuşunca dil değişiyor
-İş bitince "nasılsın" bitiyor
-Omzuna koyduğu el sıcak değil
-Sıcaklık sahte, bağ da yok
+Para konuşunca dili değişir
+İşin bitince selamı kesilir
+Omzuna koyduğu el ısınmaz
+Sen inanırken o hiç utanmaz
 
-Sen düşerken o yükselir
-Sen susarken o söyler
-Ayna tuttum, yüzü değişti
-Aynı masada, iki ayrı niyet
+Sen düşerken o hemen yükselir
+Sen susarken dilini çözer
+Ayna tuttum, maskesi düşer
+Aynı masada iki yüz gezer
 
 [Pre-Chorus]
 Gülümsüyor, eli bıçak gibi
-"Kardeşim" diyor, dili yalan gibi
-Güvenme o sese, o seste zehir var
-Bugün yanında, yarın karşıda
+Kardeşim diyor, dili yalan gibi
+O seste zehir var, duyma o sesi
+Bugün yanında, yarın ötesi
 
 [Chorus]
 Kahpe insan, kahpe insan
-Yüzün başka, için başka
+Yüzü başka, içi başka
 Kahpe insan, kahpe insan
 Dost gibi durur, arkanı kaçar
 
 Kahpe insan, kahpe insan
-Sözü büyük, sadakati yok
+Sözü büyük, sadakat yok
 Kahpe insan, kahpe insan
-Gözün açık, kalbin soğuk
+Gözü açık, kalbi soğuk
 
 [Bridge]
-Kim dost, kim düşman — çizgi duman
+Kim dost, kim düşman, çizgi duman
 İsim değişir, huy aynı kalır
-Elini sıkarken aklı başka yerde
-Sen inanırken o pazarlıkta
+Elini sıkarken aklı başka
+Sen inanırken o hesapta
 
 [Final Chorus]
 Kahpe insan, kahpe insan
-Yüzün başka, için başka
+Yüzü başka, içi başka
 Kahpe insan, kahpe insan
 Dost gibi durur, arkanı kaçar
 
-Kahpe insan — tanıdım seni
-Sözün ucuz, niyetin pahalı
+Kahpe insan, tanıdım seni
+Ucuz sözün, pahalı niyetin
 Kahpe insan, kahpe insan
 Bırak gitsin, tutma kendini
 
 ============================================================
 NOT
 ============================================================
-- Örnek şarkıdaki "dost sanma / ikiyüzlü / menfaat" karakterini taşıyor
-- Sadece "kahpe insan" demek değil: yüz-gül / arkadan bak / ihtiyacın bitince yok / para konuşunca dil değişir
+- Dizeler AABB / paralel yapı; nakarat hece ve ritim uyumlu
+- Karakter dökümü: sahte gülüş, menfaat, iki yüz, sahte kardeşlik
 - Meta yok (ritim/bağlama/listeler deme)
-- Kısa satırlar, düz Türkçe
 - Credit: Söz-Müzik: Arven Solé

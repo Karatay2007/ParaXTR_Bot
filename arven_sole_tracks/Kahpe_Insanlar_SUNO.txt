@@ -1,0 +1,106 @@
+# Arven Solé — Kahpe İnsanlar
+# İlham: Börüler - Kahpe Dönek (karakter / ruh uyarlaması — kopya değil)
+# Suno: Nefesim Daralıyor winning recipe
+
+============================================================
+STYLES (kopyala)
+============================================================
+Hard-hitting Turkish emotional hit, elektro bağlama lead upfront, aggressive driving drums, punchy bass, exciting midtempo groove, rhythm hits hard, not slow, not flat, addictive catchy chorus, male vocal, verse quieter then chorus explodes, rich arrangement, clean studio, arabesk emotion with rock energy
+
+============================================================
+EXCLUDE
+============================================================
+slow ballad, soft sleepy, flat dynamics, weak drums, trap 808 spam, EDM, cute, happy
+
+============================================================
+SETTINGS
+============================================================
+Vocal: Male
+Weirdness: ~45%
+Style Influence: ~90%
+Audio reference: YOK
+
+============================================================
+LYRICS (kopyala)
+============================================================
+[Verse 1]
+Yüzüne gülüyor, arkadan bakıyor
+Dostum diye tuttun, eli cebinde
+Sözü tatlı, niyeti başka yerde
+Yanında duruyor, hesabı kafasında
+
+Gözü dolu ama kalbi boş
+İhtiyacın bitince adı yok
+Masada aynı lokmayı bölüyor
+Kapıda çıkınca seni siliyor
+
+[Pre-Chorus]
+Gülümsüyor, eli bıçak gibi
+"Kardeşim" diyor, dili yalan gibi
+Güvenme o sese, o seste zehir var
+Bugün yanında, yarın karşıda
+
+[Chorus]
+Kahpe insan, kahpe insan
+Yüzün başka, için başka
+Kahpe insan, kahpe insan
+Dost gibi durur, arkanı kaçar
+
+Kahpe insan, kahpe insan
+Sözü büyük, sadakati yok
+Kahpe insan, kahpe insan
+Gözün açık, kalbin soğuk
+
+[Verse 2]
+Para konuşunca dil değişiyor
+İş bitince "nasılsın" bitiyor
+Omzuna koyduğu el sıcak değil
+Sıcaklık sahte, bağ sahte değil — bağ yok
+
+Sen düşerken o yükselir
+Sen susarken o söyler
+Ayna tuttum, yüzü değişti
+Aynı masada, iki ayrı niyet
+
+[Pre-Chorus]
+Gülümsüyor, eli bıçak gibi
+"Kardeşim" diyor, dili yalan gibi
+Güvenme o sese, o seste zehir var
+Bugün yanında, yarın karşıda
+
+[Chorus]
+Kahpe insan, kahpe insan
+Yüzün başka, için başka
+Kahpe insan, kahpe insan
+Dost gibi durur, arkanı kaçar
+
+Kahpe insan, kahpe insan
+Sözü büyük, sadakati yok
+Kahpe insan, kahpe insan
+Gözün açık, kalbin soğuk
+
+[Bridge]
+Kim dost, kim düşman — çizgi duman
+İsim değişir, huy aynı kalır
+Elini sıkarken aklı başka yerde
+Sen inanırken o pazarlıkta
+
+[Final Chorus]
+Kahpe insan, kahpe insan
+Yüzün başka, için başka
+Kahpe insan, kahpe insan
+Dost gibi durur, arkanı kaçar
+
+Kahpe insan — tanıdım seni
+Sözün ucuz, niyetin pahalı
+Kahpe insan, kahpe insan
+Bırak gitsin, tutma kendini
+
+============================================================
+NOT
+============================================================
+- Örnek şarkıdaki "dost sanma / ikiyüzlü / menfaat" karakterini taşıyor
+- Sadece "kahpe insan" demek değil: yüz-gül / arkadan bak / ihtiyacın bitince yok / para konuşunca dil değişir
+- Meta yok (ritim/bağlama/listeler deme)
+- Kısa satırlar, düz Türkçe
+- Credit: Söz-Müzik: Arven Solé

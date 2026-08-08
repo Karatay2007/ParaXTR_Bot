@@ -1,24 +1,25 @@
 # Arven Solé — Kahpe İnsanlar
-# İlham: Börüler - Kahpe Dönek (karakter / ruh uyarlaması — kopya değil)
-# Suno: Nefesim Daralıyor winning recipe
+# Kompset: Nefesim Daralıyor ile BİREBİR aynı
+# Tempo: örnek şarkı (Kahpe Dönek) gibi tempolu / vurucu — SLOW DEĞİL
 
 ============================================================
-STYLES (kopyala)
+STYLES (kopyala — Nefesim kompset; tek fark: uptempo)
 ============================================================
-Hard-hitting Turkish emotional hit, elektro bağlama lead upfront, aggressive driving drums, punchy bass, exciting midtempo groove, rhythm hits hard, not slow, not flat, addictive catchy chorus, male vocal, verse quieter then chorus explodes, rich arrangement, clean studio, arabesk emotion with rock energy
+Hard-hitting Turkish emotional hit, elektro bağlama lead upfront, aggressive driving drums, punchy bass, exciting uptempo driving groove, rhythm hits hard, not slow, not flat, addictive catchy chorus, male vocal, verse quieter then chorus explodes, rich arrangement, clean studio, arabesk emotion with rock energy
 
 ============================================================
-EXCLUDE
+EXCLUDE (Nefesim + slow duygusal engeli)
 ============================================================
-slow ballad, soft sleepy, flat dynamics, weak drums, trap 808 spam, EDM, cute, happy
+slow ballad, soft sleepy, flat dynamics, weak drums, trap 808 spam, EDM, cute, happy, melancholic ballad, slow emotional, soft sad, downtempo
 
 ============================================================
-SETTINGS
+SETTINGS (Nefesim ile birebir aynı)
 ============================================================
 Vocal: Male
 Weirdness: ~45%
 Style Influence: ~90%
 Audio reference: YOK
+Yeni generate (continue / audio upload yok)
 
 ============================================================
 LYRICS (kopyala)
@@ -99,7 +100,7 @@ Bırak gitsin, tutma kendini
 ============================================================
 NOT
 ============================================================
-- Dizeler AABB / paralel yapı; nakarat hece ve ritim uyumlu
-- Karakter dökümü: sahte gülüş, menfaat, iki yüz, sahte kardeşlik
-- Meta yok (ritim/bağlama/listeler deme)
+- Ayarlar = Nefesim Daralıyor kompseti (Male / 45% / 90% / no ref)
+- Tek fark: midtempo yerine uptempo driving + street punch (örnek şarkı temposu)
+- Slow / soft emotional ASLA
 - Credit: Söz-Müzik: Arven Solé

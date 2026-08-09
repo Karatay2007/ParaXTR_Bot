@@ -20,6 +20,7 @@ FONT_OUTFIT = Path("/workspace/fonts/Outfit.ttf")
 FONT_SERIF = Path("/usr/share/fonts/truetype/noto/NotoSerifDisplay-Bold.ttf")
 FONT_LYRIC = Path("/usr/share/fonts/truetype/noto/NotoSansDisplay-Bold.ttf")
 FONT_BANNER = Path("/workspace/fonts/ArchivoBlack-Regular.ttf")
+FONT_YELLOW = Path("/workspace/fonts/Anton-Regular.ttf")
 ICON_THUMB = Path("/workspace/fonts/icons/thumb_up.png")
 ICON_BELL = Path("/workspace/fonts/icons/bell.png")
 ART = Path("/opt/cursor/artifacts")
@@ -33,8 +34,10 @@ WHITE = (255, 255, 255)
 MUTED = (168, 162, 152)
 PROGRESS_BG = (55, 50, 45)
 LIKE_BLUE = (66, 133, 244)
+YELLOW = (255, 214, 0)
 
 TITLE = "KAHPE İNSAN"
+SONG_YELLOW = "Kahpe İnsan"
 ARTIST = "ARVEN SOLÉ"
 CREDIT = "SÖZ · MÜZİK   ARVEN SOLÉ"
 
@@ -368,6 +371,30 @@ def draw_subscribe_cta(img: Image.Image, t_local: float) -> None:
     img.alpha_composite(layer)
 
 
+def draw_yellow_song_name(img: Image.Image, t_local: float = 0.0) -> None:
+    """Only add: slanted yellow song title in the reference title zone. Nothing else."""
+    bob = math.sin(t_local * 2.0) * 3
+    fnt = font_path(FONT_YELLOW, 110)
+    probe = ImageDraw.Draw(Image.new("RGBA", (8, 8)))
+    bb = probe.textbbox((0, 0), SONG_YELLOW, font=fnt)
+    tw, th = bb[2] - bb[0], bb[3] - bb[1]
+    pad = 36
+    layer = Image.new("RGBA", (tw + pad * 2, th + pad * 2), (0, 0, 0, 0))
+    ld = ImageDraw.Draw(layer)
+    ox, oy = pad - bb[0], pad - bb[1]
+    for dx, dy in (
+        (-4, 0), (4, 0), (0, -4), (0, 4),
+        (-3, -3), (3, 3), (-3, 3), (3, -3),
+        (-2, 0), (2, 0), (0, -2), (0, 2),
+    ):
+        ld.text((ox + dx, oy + dy), SONG_YELLOW, font=fnt, fill=(0, 0, 0, 255))
+    ld.text((ox, oy), SONG_YELLOW, font=fnt, fill=(*YELLOW, 255))
+    angled = layer.rotate(8, resample=Image.Resampling.BICUBIC, expand=True)
+    cx = (W - angled.width) // 2 + 8
+    cy = int(520 + bob) - angled.height // 2
+    img.alpha_composite(angled, (cx, cy))
+
+
 def draw_top_banner(img: Image.Image, t_local: float = 0.0) -> None:
     bob = math.sin(t_local * 2.2) * 6
     pulse = 0.5 + 0.5 * math.sin(t_local * 3.0)
@@ -524,6 +551,7 @@ def render_short() -> None:
             smooth = 0.55 * smooth + 0.45 * band_energies(chunk, n_bars)
             frame = base.copy()
             draw_subscribe_cta(frame, t_local=t_local)
+            draw_yellow_song_name(frame, t_local=t_local)
             draw_kinetic_lyrics(frame, t, audio_level=audio_level)
             d = ImageDraw.Draw(frame)
             draw_eq(d, smooth, t_local / max(0.001, clip_dur))

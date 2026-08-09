@@ -46,13 +46,20 @@ CREDIT_TOP = 1220
 CTA_Y = 1585
 PROGRESS_Y = 1785
 
-# Hottest final chorus — peak energy + title hook (no DEVAMI YAYINDA)
-SHORT_T0 = 207.5
+# Bridge → final chorus (chorus alone is weak; lead-in required). No DEVAMI.
+SHORT_T0 = 198.5
 SHORT_T1 = 236.2
 WORD_LEAD = 0.05
 
 LINES: list[list[tuple[float, float, str]]] = [
+    # Bridge / pre-chorus (lead-in — chorus alone is too abrupt)
+    [(198.82, 199.48, "Kim"), (199.48, 199.84, "dost"), (200.12, 200.28, "kim"), (200.28, 200.94, "düşman")],
+    [(200.94, 201.54, "Çizgi"), (201.54, 202.20, "duman")],
+    [(202.20, 202.72, "İsim"), (202.72, 203.46, "değişir")],
+    [(203.46, 203.84, "Huy"), (203.84, 204.44, "aynı"), (204.44, 204.94, "kalır")],
+    [(204.94, 205.44, "elini"), (205.44, 206.18, "sıkarken"), (206.18, 207.06, "aklın"), (207.06, 207.86, "başka")],
     [(207.86, 208.36, "Ben"), (208.36, 209.20, "yanarken"), (209.20, 209.54, "sen"), (209.54, 212.86, "hesapta")],
+    # Chorus
     [(212.86, 213.76, "Kahpe"), (213.76, 214.50, "insan")],
     [(214.92, 215.50, "tanıdım"), (215.50, 215.98, "seni")],
     [(215.98, 216.94, "Gözün"), (216.94, 217.40, "güler"), (217.40, 217.84, "için"), (217.84, 218.28, "yer"), (218.28, 218.60, "beni")],

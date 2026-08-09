@@ -20,3 +20,4 @@ Mobile'den short/uzun YouTube video istenince buradan kullanılır.
 - Nefesim_Daraliyor.mp3 (3:27)
 - Unutamadim_Seni.mp3 (3:36) — unutmadımseni2 upload; hook: Unutamadım seni
 - Kahpe_Insan.mp3 (4:11)
+- Kahpe_Konser.mp3 (4:17) — konser versiyon

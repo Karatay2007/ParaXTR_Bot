@@ -12,7 +12,7 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 AUDIO = Path("/workspace/arven_sole_tracks/Nefesim_Daraliyor.mp3")
 OUT = Path("/workspace/ArvenSole_NefesimDaraliyor_TIKTOK_QUOTE.mp4")
 ART = Path("/opt/cursor/artifacts")
-STOCK = Path("/tmp/nefes_stock")
+STOCK = Path("/tmp/nefes_bright")
 WORK = Path("/tmp/nefes_quote_short")
 FONT = Path("/workspace/fonts/CormorantGaramond-SemiBoldItalic.ttf")
 if not FONT.exists():
@@ -21,7 +21,7 @@ if not FONT.exists():
 W, H = 1080, 1920
 FPS = 24
 T0 = 114.5  # chorus start — Nefesim daralıyor
-T1 = 136.0  # keep Short tight (~21.5s) through “sen kaldın içimde”
+T1 = 149.5  # FULL chorus (Geçemedim section twice) ~35s
 
 QUOTE = (
     "Her şey yolundayken bile içimde hep tetikte bekleyen bir taraf var, "
@@ -31,11 +31,12 @@ QUOTE = (
     "iç gürültünün içinde yavaş yavaş yok oluyorum."
 )
 
-# Real video: sleepless night → overthinking → trapped/breathless
+# Ferah / open light — golden outdoor + bright window thinking (not crushed night)
 SEGMENTS = [
-    (STOCK / "48733.mp4", 0.8, 8.0),   # awake in bed, staring at ceiling (night mind)
-    (STOCK / "51399.mp4", 0.5, 7.0),   # restless insomnia in bed
-    (STOCK / "17536.mp4", 1.0, 7.0),   # hand on fence at night — trapped / breathless
+    (STOCK / "2168.mp4", 0.3, 12.0),   # bright orange sunset beach
+    (STOCK / "4840.mp4", 0.5, 11.5),   # rooftop sunset — open air
+    (STOCK / "4511.mp4", 0.2, 6.0),    # bright window — anxious look out
+    (STOCK / "3428.mp4", 2.0, 10.0),   # open street dusk — airy
 ]
 
 
@@ -44,11 +45,12 @@ def _font(size: int) -> ImageFont.FreeTypeFont:
 
 
 def to_vertical(src: Path, t0: float, dur: float, dest: Path) -> None:
+    # Lift exposure — ferah, not crushed blacks
     vf = (
         f"scale={W}:{H}:force_original_aspect_ratio=increase,"
         f"crop={W}:{H},"
-        "eq=brightness=-0.08:saturation=0.82:contrast=1.06,"
-        "vignette=PI/4.5"
+        "eq=brightness=0.12:saturation=1.08:contrast=1.03,"
+        "vignette=PI/9"
     )
     subprocess.check_call(
         [
@@ -124,19 +126,20 @@ def wrap_quote(draw: ImageDraw.ImageDraw, fnt: ImageFont.FreeTypeFont, max_w: in
 
 def make_quote_overlay() -> Image.Image:
     layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    # Lighter wash — text readable without killing bright footage
     wash = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     wd = ImageDraw.Draw(wash)
-    top, bot = 420, 1500
+    top, bot = 380, 1560
     for y in range(top, bot):
         p = abs((y - (top + bot) / 2) / ((bot - top) / 2))
-        a = int(165 * max(0.0, 1.0 - p**1.25))
+        a = int(118 * max(0.0, 1.0 - p**1.3))
         wd.line([(48, y), (W - 48, y)], fill=(0, 0, 0, a))
     layer = Image.alpha_composite(layer, wash)
 
     d = ImageDraw.Draw(layer)
-    fnt = _font(40)
-    lines = wrap_quote(d, fnt, max_w=W - 160)
-    line_gap = 14
+    fnt = _font(50)  # bigger, still with side margins
+    lines = wrap_quote(d, fnt, max_w=W - 130)
+    line_gap = 11
     heights = []
     widths = []
     for line in lines:

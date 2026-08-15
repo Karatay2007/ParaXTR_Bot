@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Teninde Kal — TikTok quote Short (premium mural layout + ferah stock + ABONE CTA)."""
+"""Teninde Kal — TikTok quote Short (frosted glass mural + ferah stock + ABONE CTA)."""
 
 from __future__ import annotations
 

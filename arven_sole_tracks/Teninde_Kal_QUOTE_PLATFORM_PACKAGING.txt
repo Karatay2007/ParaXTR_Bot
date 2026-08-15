@@ -1,20 +1,17 @@
-Teninde Kal — platform quote Shorts (algorithm-safe variants)
-==============================================================
+Teninde Kal — quote Short (TikTok / Instagram / YouTube)
+========================================================
 
-Aynı şiir / aynı şarkı ailesi, AMA üç yükleme birbirinin kopyası değil:
-  • farklı ses kesiti
-  • farklı B-roll sırası + grade
-  • farklı yazı yerleşimi / reveal
-  • farklı CTA
+Üç platformda da AYNI video (TikTok master):
 
-TikTok (mevcut)
----------------
-Dosya: ArvenSole_TenindeKal_TIKTOK_QUOTE.mp4
-Kesit: ~120.7–154.5
-Layout: ortalı Cormorant + Cemal altta
-CTA: Like → ABONE OL → Bell (mouse)
+  ArvenSole_TenindeKal_TIKTOK_QUOTE.mp4
+  ArvenSole_TenindeKal_REELS_QUOTE.mp4   ← aynı dosya
+  ArvenSole_TenindeKal_SHORTS_QUOTE.mp4  ← aynı dosya
 
-Caption:
+Kesit: ~120.7–154.5 · ortalı Cormorant + Cemal altta · Like/ABONE/Bell CTA
+
+
+TikTok caption
+--------------
 Teninde Kal 🖤
 Cemal Süreya’nın dediği gibi…
 
@@ -24,51 +21,26 @@ Full şarkı YouTube’da 🔗
 #arvensole #tenindekal #cemalsüreya #şiir #duygusal #fyp #keşfet
 
 
-Instagram Reels
----------------
-Dosya: ArvenSole_TenindeKal_REELS_QUOTE.mp4
-Kesit: ~119.2–151.0 (daha erken giriş, daha kısa)
-Layout: SOL mural yazı + Cemal sağ alt + @arven.sole
-CTA: TAKİP ET (IG stili — YouTube mouse yok)
-Grade: daha sıcak / ferah
-
-Caption:
+Instagram Reels caption
+-----------------------
+Teninde Kal 🖤
 Cemal Süreya’nın dediği gibi…
-“Seni, senin bile haberinin olmadığı şeylerden dolayı seviyorum…”
 
-Teninde Kal — Arven Solé
 Full şarkı YouTube’da 🔗
+@arven.sole
 
 #arvensole #tenindekal #cemalsüreya #şiir #reels #keşfet
-
-Ayarlar: Herkese açık · Paylaşım / remix açık · Kapak: yazı + Cemal net kare
 
 
 YouTube Shorts
 --------------
-Dosya: ArvenSole_TenindeKal_SHORTS_QUOTE.mp4
-Kesit: ~122.4–156.0 (daha geç chorus)
-Layout: üstte ARVEN SOLÉ · TENINDE KAL, satır satır reveal, Cemal sonda
-CTA: tek pulse ABONE OL (Like/Bell mouse yok)
-Son: kısa ARVEN SOLÉ end card
-Grade: biraz daha kontrast
-
-Başlık (Shorts — #shorts kullanma):
-Teninde Kal | Cemal Süreya
+Başlık: Teninde Kal | Cemal Süreya
 
 Açıklama:
+Teninde Kal 🖤
 Cemal Süreya’nın dediği gibi…
-Seni, senin bile haberinin olmadığı şeylerden dolayı seviyorum…
 
 🎵 Teninde Kal — Arven Solé
 Full şarkı kanalda.
 
-#ArvenSole #TenindeKal #CemalSüreya #Şiir #Shorts
-
-Ayarlar: Herkese açık · Yorum açık · Çocuklara uygun değil (müzik) · Playlist: Arven Solé Shorts
-
-
-Yükleme sırası (öneri)
-----------------------
-1) TikTok  2) 4–12 saat sonra Instagram  3) ertesi gün YouTube Shorts
-Aynı gün üçüne aynı anda atma.
+#ArvenSole #TenindeKal #CemalSüreya #Şiir

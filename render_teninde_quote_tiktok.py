@@ -33,11 +33,19 @@ LIKE_BLUE = (66, 133, 244)
 
 INTRO = "Cemal Süreya’nın dediği gibi;"
 # Manual mural line breaks — left column, clean rhythm
+# Exact mural line breaks (reference wall photo)
 QUOTE_LINES = [
-    "“Seni, senin bile haberinin",
-    "olmadığı şeylerden dolayı",
-    "seviyorum, sen boşuna",
-    "saçlarını düzeltiyorsun…”",
+    "“Seni, senin bile",
+    "haberinin olmadığı",
+    "şeylerden dolayı",
+    "seviyorum,",
+    "sen boşuna",
+    "saçlarını",
+    "düzeltiyorsun…”",
+]
+INTRO_LINES = [
+    "Cemal Süreya’nın",
+    "dediği gibi;",
 ]
 
 # Ferah cinematic beds matching intimacy / stay-close lyric
@@ -131,61 +139,39 @@ def concat_xfade(paths: list[Path], durs: list[float], dest: Path, fade: float =
 
 
 def make_quote_overlay(cemal: Image.Image) -> Image.Image:
-    """Clean mural card: frosted panel, black hand lettering left, Cemal bottom-right."""
+    """Street-mural layout (ref wall photo): NO frosted box. Black ink left, Cemal bottom-right."""
     layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-
-    # Panel geometry
-    pad_x, top, bot = 48, 280, 1120
-    # Soft drop shadow
-    shadow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    sd = ImageDraw.Draw(shadow)
-    sd.rounded_rectangle((pad_x + 10, top + 14, W - pad_x + 10, bot + 14), radius=28, fill=(0, 0, 0, 55))
-    shadow = shadow.filter(ImageFilter.GaussianBlur(18))
-    layer = Image.alpha_composite(layer, shadow)
-
-    # Frosted white card
-    card = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    cd = ImageDraw.Draw(card)
-    cd.rounded_rectangle(
-        (pad_x, top, W - pad_x, bot),
-        radius=26,
-        fill=(255, 252, 247, 188),
-    )
-    # inner hairline
-    cd.rounded_rectangle(
-        (pad_x + 2, top + 2, W - pad_x - 2, bot - 2),
-        radius=24,
-        outline=(255, 255, 255, 90),
-        width=2,
-    )
-    layer = Image.alpha_composite(layer, card)
     d = ImageDraw.Draw(layer)
 
-    ink = (16, 14, 12, 255)
-    intro_fnt = _font(FONT, 38)
-    quote_fnt = _font(FONT, 52)
+    ink = (12, 10, 9, 255)
+    intro_fnt = _font(FONT, 44)
+    quote_fnt = _font(FONT, 50)
 
-    # Left text column
-    tx = pad_x + 40
-    ty = top + 48
-    d.text((tx + 1, ty + 1), INTRO, font=intro_fnt, fill=(0, 0, 0, 35))
-    d.text((tx, ty), INTRO, font=intro_fnt, fill=ink)
+    # Left column — exact mural rhythm
+    tx, ty = 72, 340
+    y = ty
+    for line in INTRO_LINES:
+        d.text((tx + 1, y + 1), line, font=intro_fnt, fill=(0, 0, 0, 45))
+        d.text((tx, y), line, font=intro_fnt, fill=ink)
+        bb = d.textbbox((0, 0), line, font=intro_fnt)
+        y += (bb[3] - bb[1]) + 4
 
-    y = ty + 62
-    gap = 8
+    y += 18
     for line in QUOTE_LINES:
-        d.text((tx + 1, y + 1), line, font=quote_fnt, fill=(0, 0, 0, 40))
+        d.text((tx + 1, y + 1), line, font=quote_fnt, fill=(0, 0, 0, 45))
         d.text((tx, y), line, font=quote_fnt, fill=ink)
         bb = d.textbbox((0, 0), line, font=quote_fnt)
-        y += (bb[3] - bb[1]) + gap
+        y += (bb[3] - bb[1]) + 6
 
-    # Cemal — bottom-right inside card, clear of text
-    cw = 360
+    # Cemal stencil — bottom-right, beside last lines (mural)
+    cw = 420
     ch = int(cemal.height * (cw / max(1, cemal.width)))
     cemal_r = cemal.resize((cw, ch), Image.Resampling.LANCZOS)
-    cx = W - pad_x - cw - 28
-    cy = bot - ch - 36
-    layer.alpha_composite(cemal_r, (cx, cy))
+    cx = W - cw - 40
+    cy = 1080 - 40
+    # Keep figure above CTA safely
+    cy = min(cy, CTA_Y - ch - 160)
+    layer.alpha_composite(cemal_r, (cx, max(520, cy)))
 
     return layer
 
@@ -306,52 +292,35 @@ def render() -> None:
     STOCK.mkdir(parents=True, exist_ok=True)
 
     clip_dur = T1 - T0
-    print(f"TikTok quote v3  {T0:.2f}→{T1:.2f} ({clip_dur:.2f}s)", flush=True)
+    print(f"TikTok mural wall  {T0:.2f}→{T1:.2f} ({clip_dur:.2f}s)", flush=True)
 
-    fade = 0.55
-    segs = list(SEGMENTS)
-    raw_sum = sum(d for _, _, d in segs)
-    scale = (clip_dur + fade * (len(segs) - 1)) / raw_sum
-    segs = [(p, s, d * scale) for p, s, d in segs]
-
-    vpaths, durs = [], []
-    for i, (src, ss, dur) in enumerate(segs):
-        if not src.exists():
-            raise FileNotFoundError(src)
-        src_dur = float(
-            subprocess.check_output(
-                [
-                    "ffprobe", "-v", "error", "-show_entries", "format=duration",
-                    "-of", "default=noprint_wrappers=1:nokey=1", str(src),
-                ],
-                text=True,
-            ).strip()
-        )
-        if ss + dur > src_dur - 0.05:
-            dur = max(1.0, src_dur - ss - 0.05)
-        dest = WORK / f"v{i:02d}.mp4"
-        print(f"  prep {src.name} → {dur:.2f}s", flush=True)
-        to_vertical(src, ss, dur, dest)
-        vpaths.append(dest)
-        durs.append(dur)
-
-    bed = WORK / "bed.mp4"
-    total_v = concat_xfade(vpaths, durs, bed, fade=fade)
-    print(f"bed ~{total_v:.2f}s", flush=True)
-
+    # Background = off-white plaster wall (ref photo 2), subtle Ken Burns motion
+    wall = Path("/opt/cursor/artifacts/assets/mural_wall_bg.png")
+    if not wall.exists():
+        raise FileNotFoundError(wall)
     bed2 = WORK / "bed_exact.mp4"
-    loop = "2" if total_v + 0.05 < clip_dur else "0"
+    # Slow zoom-in on wall — feels like real video, keeps mural aesthetic
+    n_frames_est = int(round(clip_dur * FPS))
     subprocess.check_call(
         [
-            "ffmpeg", "-y", "-stream_loop", loop, "-i", str(bed),
+            "ffmpeg", "-y",
+            "-loop", "1", "-i", str(wall),
             "-t", f"{clip_dur:.3f}",
-            "-vf", f"fps={FPS},scale={W}:{H}",
+            "-vf",
+            (
+                f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},"
+                f"zoompan=z='min(1.08,1+0.08*{FPS}*on/{n_frames_est})':"
+                f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s={W}x{H}:fps={FPS},"
+                "eq=brightness=0.04:saturation=0.95"
+            ),
+            "-r", str(FPS),
             "-c:v", "libx264", "-preset", "veryfast", "-crf", "16", "-pix_fmt", "yuv420p",
             str(bed2),
         ],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
+    print(f"wall bed ready", flush=True)
 
     audio = WORK / "audio.wav"
     subprocess.check_call(

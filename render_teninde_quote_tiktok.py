@@ -139,40 +139,61 @@ def concat_xfade(paths: list[Path], durs: list[float], dest: Path, fade: float =
 
 
 def make_quote_overlay(cemal: Image.Image) -> Image.Image:
-    """Street-mural layout (ref wall photo): NO frosted box. Black ink left, Cemal bottom-right."""
+    """Mural typography on video: black hand lettering TL, Cemal BR. No frosted card."""
     layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+
+    # Soft light wash only behind text+figure for readability (not a box)
+    wash = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    wd = ImageDraw.Draw(wash)
+    for y in range(260, 1280):
+        p = abs((y - 760) / 520)
+        a = int(95 * max(0.0, 1.0 - p ** 1.2))
+        wd.line([(40, y), (W - 40, y)], fill=(255, 250, 242, a))
+    wash = wash.filter(ImageFilter.GaussianBlur(12))
+    layer = Image.alpha_composite(layer, wash)
     d = ImageDraw.Draw(layer)
 
-    ink = (12, 10, 9, 255)
-    intro_fnt = _font(FONT, 44)
-    quote_fnt = _font(FONT, 50)
+    ink = (10, 8, 7, 255)
+    intro_fnt = _font(FONT, 46)
+    quote_fnt = _font(FONT, 54)
 
-    # Left column — exact mural rhythm
-    tx, ty = 72, 340
-    y = ty
+    def draw_ink(x: int, y: int, text: str, fnt) -> int:
+        # white halo so black reads on any footage
+        for ox, oy in ((-2, 0), (2, 0), (0, -2), (0, 2), (-1, -1), (1, 1), (-1, 1), (1, -1)):
+            d.text((x + ox, y + oy), text, font=fnt, fill=(255, 252, 247, 200))
+        d.text((x + 1, y + 1), text, font=fnt, fill=(0, 0, 0, 50))
+        d.text((x, y), text, font=fnt, fill=ink)
+        bb = d.textbbox((0, 0), text, font=fnt)
+        return bb[3] - bb[1]
+
+    tx, y = 64, 300
     for line in INTRO_LINES:
-        d.text((tx + 1, y + 1), line, font=intro_fnt, fill=(0, 0, 0, 45))
-        d.text((tx, y), line, font=intro_fnt, fill=ink)
-        bb = d.textbbox((0, 0), line, font=intro_fnt)
-        y += (bb[3] - bb[1]) + 4
-
-    y += 18
+        h = draw_ink(tx, y, line, intro_fnt)
+        y += h + 2
+    y += 16
     for line in QUOTE_LINES:
-        d.text((tx + 1, y + 1), line, font=quote_fnt, fill=(0, 0, 0, 45))
-        d.text((tx, y), line, font=quote_fnt, fill=ink)
-        bb = d.textbbox((0, 0), line, font=quote_fnt)
-        y += (bb[3] - bb[1]) + 6
+        h = draw_ink(tx, y, line, quote_fnt)
+        y += h + 4
 
-    # Cemal stencil — bottom-right, beside last lines (mural)
-    cw = 420
+    cw = 400
     ch = int(cemal.height * (cw / max(1, cemal.width)))
     cemal_r = cemal.resize((cw, ch), Image.Resampling.LANCZOS)
-    cx = W - cw - 40
-    cy = 1080 - 40
-    # Keep figure above CTA safely
-    cy = min(cy, CTA_Y - ch - 160)
-    layer.alpha_composite(cemal_r, (cx, max(520, cy)))
-
+    # soft white rim behind cemal for punch
+    rim = Image.new("RGBA", (cw + 24, ch + 24), (0, 0, 0, 0))
+    ca = np.array(cemal_r)
+    mask = ca[:, :, 3] > 20
+    # expand mask for rim
+    from PIL import ImageFilter as IF
+    alpha = Image.fromarray(ca[:, :, 3]).filter(IF.MaxFilter(7))
+    rim_a = np.array(alpha)
+    rim_img = np.zeros((ch, cw, 4), dtype=np.uint8)
+    rim_img[:, :, 0:3] = 255
+    rim_img[:, :, 3] = (rim_a.astype(np.float32) * 0.55).astype(np.uint8)
+    rim_pil = Image.fromarray(rim_img).filter(IF.GaussianBlur(3))
+    cx = W - cw - 48
+    cy = min(CTA_Y - ch - 180, 980)
+    layer.alpha_composite(rim_pil, (cx, cy))
+    layer.alpha_composite(cemal_r, (cx, cy))
     return layer
 
 
@@ -292,35 +313,52 @@ def render() -> None:
     STOCK.mkdir(parents=True, exist_ok=True)
 
     clip_dur = T1 - T0
-    print(f"TikTok mural wall  {T0:.2f}→{T1:.2f} ({clip_dur:.2f}s)", flush=True)
+    print(f"TikTok ferah + mural text  {T0:.2f}→{T1:.2f} ({clip_dur:.2f}s)", flush=True)
 
-    # Background = off-white plaster wall (ref photo 2), subtle Ken Burns motion
-    wall = Path("/opt/cursor/artifacts/assets/mural_wall_bg.png")
-    if not wall.exists():
-        raise FileNotFoundError(wall)
+    fade = 0.55
+    segs = list(SEGMENTS)
+    raw_sum = sum(d for _, _, d in segs)
+    scale = (clip_dur + fade * (len(segs) - 1)) / raw_sum
+    segs = [(p, s, d * scale) for p, s, d in segs]
+
+    vpaths, durs = [], []
+    for i, (src, ss, dur) in enumerate(segs):
+        if not src.exists():
+            raise FileNotFoundError(src)
+        src_dur = float(
+            subprocess.check_output(
+                [
+                    "ffprobe", "-v", "error", "-show_entries", "format=duration",
+                    "-of", "default=noprint_wrappers=1:nokey=1", str(src),
+                ],
+                text=True,
+            ).strip()
+        )
+        if ss + dur > src_dur - 0.05:
+            dur = max(1.0, src_dur - ss - 0.05)
+        dest = WORK / f"v{i:02d}.mp4"
+        print(f"  prep {src.name} → {dur:.2f}s", flush=True)
+        to_vertical(src, ss, dur, dest)
+        vpaths.append(dest)
+        durs.append(dur)
+
+    bed = WORK / "bed.mp4"
+    total_v = concat_xfade(vpaths, durs, bed, fade=fade)
+    print(f"bed ~{total_v:.2f}s", flush=True)
+
     bed2 = WORK / "bed_exact.mp4"
-    # Slow zoom-in on wall — feels like real video, keeps mural aesthetic
-    n_frames_est = int(round(clip_dur * FPS))
+    loop = "2" if total_v + 0.05 < clip_dur else "0"
     subprocess.check_call(
         [
-            "ffmpeg", "-y",
-            "-loop", "1", "-i", str(wall),
+            "ffmpeg", "-y", "-stream_loop", loop, "-i", str(bed),
             "-t", f"{clip_dur:.3f}",
-            "-vf",
-            (
-                f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},"
-                f"zoompan=z='min(1.08,1+0.08*{FPS}*on/{n_frames_est})':"
-                f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s={W}x{H}:fps={FPS},"
-                "eq=brightness=0.04:saturation=0.95"
-            ),
-            "-r", str(FPS),
+            "-vf", f"fps={FPS},scale={W}:{H}",
             "-c:v", "libx264", "-preset", "veryfast", "-crf", "16", "-pix_fmt", "yuv420p",
             str(bed2),
         ],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
-    print(f"wall bed ready", flush=True)
 
     audio = WORK / "audio.wav"
     subprocess.check_call(

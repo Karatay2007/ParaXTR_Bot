@@ -81,12 +81,13 @@ def ensure_cemal() -> Image.Image:
 
 
 def to_vertical(src: Path, t0: float, dur: float, dest: Path) -> None:
-    # Center-weighted 9:16, lifted exposure (ferah), gentle vignette
+    # Fill 9:16 edge-to-edge (no bars), ferah grade
     vf = (
         f"scale={W}:{H}:force_original_aspect_ratio=increase,"
         f"crop={W}:{H},"
-        "eq=brightness=0.14:saturation=1.08:contrast=1.02,"
-        "vignette=PI/12"
+        "setsar=1,"
+        "eq=brightness=0.12:saturation=1.06:contrast=1.02,"
+        "vignette=PI/14"
     )
     subprocess.check_call(
         [
@@ -138,62 +139,92 @@ def concat_xfade(paths: list[Path], durs: list[float], dest: Path, fade: float =
     return total
 
 
+# Frosted quote panel (tight around mural text + Cemal)
+CARD = (48, 240, W - 48, 1200)
+
+
 def make_quote_overlay(cemal: Image.Image) -> Image.Image:
-    """Mural typography on video: black hand lettering TL, Cemal BR. No frosted card."""
+    """One integrated unit: frosted glass panel holding mural ink + Cemal."""
     layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    x0, y0, x1, y1 = CARD
+    radius = 36
 
-    # Soft light wash only behind text+figure for readability (not a box)
-    wash = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    wd = ImageDraw.Draw(wash)
-    for y in range(260, 1280):
-        p = abs((y - 760) / 520)
-        a = int(95 * max(0.0, 1.0 - p ** 1.2))
-        wd.line([(40, y), (W - 40, y)], fill=(255, 250, 242, a))
-    wash = wash.filter(ImageFilter.GaussianBlur(12))
-    layer = Image.alpha_composite(layer, wash)
+    # Deep soft shadow — grounds the panel in the scene
+    shadow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    sd = ImageDraw.Draw(shadow)
+    sd.rounded_rectangle((x0 + 10, y0 + 22, x1 + 10, y1 + 22), radius=radius, fill=(0, 0, 0, 90))
+    layer = Image.alpha_composite(layer, shadow.filter(ImageFilter.GaussianBlur(28)))
+
+    # Frosted glass plate (see-through cream — video blur does the rest)
+    plate = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    pd = ImageDraw.Draw(plate)
+    pd.rounded_rectangle((x0, y0, x1, y1), radius=radius, fill=(255, 250, 242, 168))
+    # inner highlight rim
+    pd.rounded_rectangle(
+        (x0 + 2, y0 + 2, x1 - 2, y1 - 2),
+        radius=radius - 2,
+        outline=(255, 255, 255, 140),
+        width=2,
+    )
+    # soft bottom vignette inside plate so Cemal sits naturally
+    vig = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    vd = ImageDraw.Draw(vig)
+    for i, a in enumerate((18, 28, 40)):
+        inset = 8 + i * 6
+        vd.rounded_rectangle(
+            (x0 + inset, y1 - 280 - i * 20, x1 - inset, y1 - inset),
+            radius=24,
+            fill=(30, 22, 16, a),
+        )
+    vig = vig.filter(ImageFilter.GaussianBlur(18))
+    plate = Image.alpha_composite(plate, vig)
+    layer = Image.alpha_composite(layer, plate)
+
     d = ImageDraw.Draw(layer)
-
-    ink = (10, 8, 7, 255)
-    intro_fnt = _font(FONT, 46)
-    quote_fnt = _font(FONT, 54)
+    ink = (16, 13, 10, 255)
+    intro_fnt = _font(FONT, 42)
+    quote_fnt = _font(FONT, 52)
 
     def draw_ink(x: int, y: int, text: str, fnt) -> int:
-        # white halo so black reads on any footage
-        for ox, oy in ((-2, 0), (2, 0), (0, -2), (0, 2), (-1, -1), (1, 1), (-1, 1), (1, -1)):
-            d.text((x + ox, y + oy), text, font=fnt, fill=(255, 252, 247, 200))
-        d.text((x + 1, y + 1), text, font=fnt, fill=(0, 0, 0, 50))
+        d.text((x + 1, y + 2), text, font=fnt, fill=(0, 0, 0, 45))
         d.text((x, y), text, font=fnt, fill=ink)
         bb = d.textbbox((0, 0), text, font=fnt)
         return bb[3] - bb[1]
 
-    tx, y = 64, 300
+    tx, y = x0 + 40, y0 + 36
     for line in INTRO_LINES:
         h = draw_ink(tx, y, line, intro_fnt)
-        y += h + 2
-    y += 16
+        y += h + 1
+    y += 14
     for line in QUOTE_LINES:
         h = draw_ink(tx, y, line, quote_fnt)
-        y += h + 4
+        y += h + 3
 
-    cw = 400
+    # Cemal — inside panel, bottom-right, pure stencil cutout
+    cw = 360
     ch = int(cemal.height * (cw / max(1, cemal.width)))
     cemal_r = cemal.resize((cw, ch), Image.Resampling.LANCZOS)
-    # soft white rim behind cemal for punch
-    rim = Image.new("RGBA", (cw + 24, ch + 24), (0, 0, 0, 0))
     ca = np.array(cemal_r)
-    mask = ca[:, :, 3] > 20
-    # expand mask for rim
-    from PIL import ImageFilter as IF
-    alpha = Image.fromarray(ca[:, :, 3]).filter(IF.MaxFilter(7))
-    rim_a = np.array(alpha)
-    rim_img = np.zeros((ch, cw, 4), dtype=np.uint8)
-    rim_img[:, :, 0:3] = 255
-    rim_img[:, :, 3] = (rim_a.astype(np.float32) * 0.55).astype(np.uint8)
-    rim_pil = Image.fromarray(rim_img).filter(IF.GaussianBlur(3))
-    cx = W - cw - 48
-    cy = min(CTA_Y - ch - 180, 980)
-    layer.alpha_composite(rim_pil, (cx, cy))
+    lum = ca[:, :, :3].astype(np.float32).mean(axis=2)
+    alpha = ca[:, :, 3].astype(np.float32)
+    keep = (alpha > 40) & (lum < 160)
+    out = np.zeros_like(ca)
+    out[keep, 0:3] = 18
+    out[keep, 3] = 255
+    a_img = Image.fromarray(out[:, :, 3]).filter(ImageFilter.GaussianBlur(1.2))
+    out[:, :, 3] = np.array(a_img)
+    cemal_r = Image.fromarray(out)
+
+    cx = x1 - cw - 24
+    cy = y1 - ch - 28
+    # soft lift shadow under figure
+    lift = Image.fromarray(out[:, :, 3]).filter(ImageFilter.GaussianBlur(12))
+    lift_a = np.array(lift).astype(np.float32)
+    lift_rgba = np.zeros((ch, cw, 4), dtype=np.uint8)
+    lift_rgba[:, :, 3] = np.clip(lift_a * 0.35, 0, 120).astype(np.uint8)
+    layer.alpha_composite(Image.fromarray(lift_rgba), (cx + 4, cy + 8))
     layer.alpha_composite(cemal_r, (cx, cy))
+
     return layer
 
 
@@ -407,6 +438,21 @@ def render() -> None:
     frame_bytes = W * H * 3
 
     print(f"Compositing {n_frames}f…", flush=True)
+    # Strong blur under frosted panel so glass feels real
+    bx0, by0, bx1, by1 = CARD
+    pad = 40
+    mx0, my0 = max(0, bx0 - pad), max(0, by0 - pad)
+    mx1, my1 = min(W, bx1 + pad), min(H, by1 + pad)
+    mw, mh = mx1 - mx0, my1 - my0
+    blur_mask = Image.new("L", (mw, mh), 0)
+    md = ImageDraw.Draw(blur_mask)
+    md.rounded_rectangle(
+        (bx0 - mx0, by0 - my0, bx1 - mx0, by1 - my0),
+        radius=36,
+        fill=255,
+    )
+    blur_mask = blur_mask.filter(ImageFilter.GaussianBlur(10))
+
     try:
         for fi in range(n_frames):
             raw = bed_proc.stdout.read(frame_bytes)
@@ -414,6 +460,10 @@ def render() -> None:
                 break
             frame = Image.frombytes("RGB", (W, H), raw).convert("RGBA")
             t = fi / FPS
+            region = frame.crop((mx0, my0, mx1, my1))
+            blurred = region.filter(ImageFilter.GaussianBlur(28))
+            fused = Image.composite(blurred, region, blur_mask)
+            frame.paste(fused, (mx0, my0))
             q = quote.copy()
             if t < 0.35:
                 a = t / 0.35
@@ -426,7 +476,8 @@ def render() -> None:
                 qa[:, :, 3] = (qa[:, :, 3].astype(np.float32) * a).astype(np.uint8)
                 q = Image.fromarray(qa)
             frame.alpha_composite(q)
-            draw_subscribe_cta(frame, t)
+            if t >= 1.8:
+                draw_subscribe_cta(frame, t - 1.8)
             proc.stdin.write(frame.convert("RGB").tobytes())
             if fi % 72 == 0:
                 print(f"  {fi}/{n_frames}", flush=True)

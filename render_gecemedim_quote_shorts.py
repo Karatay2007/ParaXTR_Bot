@@ -18,8 +18,8 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 AUDIO = Path("/workspace/arven_sole_tracks/GecemedimSenden.mp3")
 OUT = Path("/workspace/ArvenSole_GecemedimSenden_SHORTS_QUOTE.mp4")
 ART = Path("/opt/cursor/artifacts")
-STOCK = Path("/tmp/teninde_quote")
-WORK = Path("/tmp/gecemedim_quote_shorts")
+STOCK = Path("/tmp/gecemedim_bed")
+WORK = Path("/tmp/gecemedim_quote_shorts_v2")
 FONT_ITALIC = Path("/workspace/fonts/CormorantGaramond-SemiBoldItalic.ttf")
 FONT_BOLD = Path("/workspace/fonts/CormorantGaramond-SemiBold.ttf")
 FONT_DIR = Path("/usr/share/fonts/truetype/macos")
@@ -46,14 +46,15 @@ PUNCH_LINES = [
     "Kalbim senden vazgeçmeyi kabul etmiyor.",
 ]
 
-# Ferah / longing beds matching “geçemedim / umut ölmedi”
+# Lyric-matched ALONE bed — NOT Teninde couple intimacy
+# Theme: geçemedim / kaldım geride / umut ölmedi (walking on, stuck, looking back)
 SEGMENTS = [
-    (STOCK / "4840.mp4", 1.2, 7.5),     # open sunset air
-    (STOCK / "4511.mp4", 0.3, 5.5),     # bright window longing
-    (STOCK / "45856.mp4", 0.6, 7.0),    # couple golden hour
-    (STOCK / "3428.mp4", 1.5, 6.5),     # open street dusk
-    (STOCK / "4624.mp4", 0.8, 6.5),     # warm romantic
-    (STOCK / "2168.mp4", 0.5, 6.0),     # beach sunset
+    (STOCK / "4629.mp4", 0.3, 6.5),      # alone woman walking sunset waterfront
+    (STOCK / "35830.mp4", 0.5, 7.0),     # person walking path between open fields
+    (STOCK / "10135.mp4", 0.4, 6.5),     # lonely woman walk green valley
+    (STOCK / "4808.mp4", 0.5, 7.0),      # alone on ledge, city sunset — stuck
+    (STOCK / "46710.mp4", 0.3, 6.5),     # girl walking alone road
+    (STOCK / "35897.mp4", 0.4, 6.0),     # silhouette man at sunset — can't leave
 ]
 
 

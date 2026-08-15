@@ -154,19 +154,24 @@ def make_quote_overlay(cemal: Image.Image) -> Image.Image:
         # soft blurred shadow under glyphs (readability on bright stock)
         shadow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
         sd = ImageDraw.Draw(shadow)
-        for ox, oy in ((0, 3), (0, 5), (2, 4), (-2, 4), (0, 7)):
-            sd.text((x + ox, y + oy), text, font=fnt, fill=(0, 0, 0, 120))
+        for ox, oy in ((0, 4), (0, 7), (3, 5), (-3, 5), (0, 10), (2, 8), (-2, 8)):
+            sd.text((x + ox, y + oy), text, font=fnt, fill=(0, 0, 0, 160))
         for ox, oy in (
+            (-6, 0), (6, 0), (0, -6), (0, 6),
+            (-5, -5), (5, 5), (-5, 5), (5, -5),
+            (-7, 3), (7, -3), (3, 7), (-3, -7),
             (-4, 0), (4, 0), (0, -4), (0, 4),
-            (-3, -3), (3, 3), (-3, 3), (3, -3),
-            (-5, 2), (5, -2), (2, 5), (-2, -5),
         ):
-            sd.text((x + ox, y + oy), text, font=fnt, fill=(0, 0, 0, 80))
-        layer.alpha_composite(shadow.filter(ImageFilter.GaussianBlur(3)))
+            sd.text((x + ox, y + oy), text, font=fnt, fill=(0, 0, 0, 110))
+        layer.alpha_composite(shadow.filter(ImageFilter.GaussianBlur(5)))
         # crisp dark rim then cream fill
         dd = ImageDraw.Draw(layer)
-        for ox, oy in ((-2, 0), (2, 0), (0, -2), (0, 2), (-1, -1), (1, 1), (-1, 1), (1, -1)):
-            dd.text((x + ox, y + oy), text, font=fnt, fill=(0, 0, 0, 210))
+        for ox, oy in (
+            (-3, 0), (3, 0), (0, -3), (0, 3),
+            (-2, -2), (2, 2), (-2, 2), (2, -2),
+            (-1, 0), (1, 0), (0, -1), (0, 1),
+        ):
+            dd.text((x + ox, y + oy), text, font=fnt, fill=(0, 0, 0, 230))
         dd.text((x, y), text, font=fnt, fill=ink)
         return th
 

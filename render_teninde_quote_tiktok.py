@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Teninde Kal — TikTok quote Short (frosted glass mural + ferah stock + ABONE CTA)."""
+"""Teninde Kal — TikTok quote Short (centered mural text + Cemal below, no white plate)."""
 
 from __future__ import annotations
 
@@ -139,90 +139,84 @@ def concat_xfade(paths: list[Path], durs: list[float], dest: Path, fade: float =
     return total
 
 
-# Frosted quote panel (tight around mural text + Cemal)
-CARD = (48, 240, W - 48, 1200)
-
-
 def make_quote_overlay(cemal: Image.Image) -> Image.Image:
-    """One integrated unit: frosted glass panel holding mural ink + Cemal."""
+    """Centered black mural text, Cemal figure directly under — no white plate."""
     layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    x0, y0, x1, y1 = CARD
-    radius = 36
-
-    # Deep soft shadow — grounds the panel in the scene
-    shadow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    sd = ImageDraw.Draw(shadow)
-    sd.rounded_rectangle((x0 + 10, y0 + 22, x1 + 10, y1 + 22), radius=radius, fill=(0, 0, 0, 90))
-    layer = Image.alpha_composite(layer, shadow.filter(ImageFilter.GaussianBlur(28)))
-
-    # Frosted glass plate (see-through cream — video blur does the rest)
-    plate = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    pd = ImageDraw.Draw(plate)
-    pd.rounded_rectangle((x0, y0, x1, y1), radius=radius, fill=(255, 250, 242, 168))
-    # inner highlight rim
-    pd.rounded_rectangle(
-        (x0 + 2, y0 + 2, x1 - 2, y1 - 2),
-        radius=radius - 2,
-        outline=(255, 255, 255, 140),
-        width=2,
-    )
-    # soft bottom vignette inside plate so Cemal sits naturally
-    vig = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    vd = ImageDraw.Draw(vig)
-    for i, a in enumerate((18, 28, 40)):
-        inset = 8 + i * 6
-        vd.rounded_rectangle(
-            (x0 + inset, y1 - 280 - i * 20, x1 - inset, y1 - inset),
-            radius=24,
-            fill=(30, 22, 16, a),
-        )
-    vig = vig.filter(ImageFilter.GaussianBlur(18))
-    plate = Image.alpha_composite(plate, vig)
-    layer = Image.alpha_composite(layer, plate)
-
     d = ImageDraw.Draw(layer)
-    ink = (16, 13, 10, 255)
-    intro_fnt = _font(FONT, 42)
-    quote_fnt = _font(FONT, 52)
 
-    def draw_ink(x: int, y: int, text: str, fnt) -> int:
-        d.text((x + 1, y + 2), text, font=fnt, fill=(0, 0, 0, 45))
-        d.text((x, y), text, font=fnt, fill=ink)
+    ink = (8, 6, 5, 255)
+    intro_fnt = _font(FONT, 46)
+    quote_fnt = _font(FONT, 54)
+
+    def line_size(text: str, fnt) -> tuple[int, int]:
         bb = d.textbbox((0, 0), text, font=fnt)
-        return bb[3] - bb[1]
+        return bb[2] - bb[0], bb[3] - bb[1]
 
-    tx, y = x0 + 40, y0 + 36
-    for line in INTRO_LINES:
-        h = draw_ink(tx, y, line, intro_fnt)
-        y += h + 1
-    y += 14
-    for line in QUOTE_LINES:
-        h = draw_ink(tx, y, line, quote_fnt)
-        y += h + 3
+    def draw_centered(y: int, text: str, fnt) -> int:
+        tw, th = line_size(text, fnt)
+        x = (W - tw) // 2
+        # thin cream rim only — readability, not a white box
+        for ox, oy in ((-2, 0), (2, 0), (0, -2), (0, 2), (-1, -1), (1, 1), (-1, 1), (1, -1)):
+            d.text((x + ox, y + oy), text, font=fnt, fill=(255, 248, 236, 170))
+        d.text((x + 1, y + 2), text, font=fnt, fill=(0, 0, 0, 55))
+        d.text((x, y), text, font=fnt, fill=ink)
+        return th
 
-    # Cemal — inside panel, bottom-right, pure stencil cutout
-    cw = 360
+    # Measure stack height so text + figure fit above CTA with clear gap
+    cw = 340
     ch = int(cemal.height * (cw / max(1, cemal.width)))
+    gap_text_fig = 36
+    gap_fig_cta = 120
+
+    lines: list[tuple[str, ImageFont.FreeTypeFont, int]] = []
+    for line in INTRO_LINES:
+        lines.append((line, intro_fnt, 2))
+    lines.append(("", intro_fnt, 14))  # spacer after intro
+    for line in QUOTE_LINES:
+        lines.append((line, quote_fnt, 4))
+
+    text_h = 0
+    for text, fnt, pad in lines:
+        if not text:
+            text_h += pad
+            continue
+        _, th = line_size(text, fnt)
+        text_h += th + pad
+
+    block_h = text_h + gap_text_fig + ch
+    # Center the whole block (text + figure) in the upper band above CTA
+    top_band = CTA_Y - gap_fig_cta
+    y0 = max(160, (top_band - block_h) // 2)
+
+    y = y0
+    for text, fnt, pad in lines:
+        if not text:
+            y += pad
+            continue
+        h = draw_centered(y, text, fnt)
+        y += h + pad
+
+    # Cemal — centered directly under the last quote line
     cemal_r = cemal.resize((cw, ch), Image.Resampling.LANCZOS)
     ca = np.array(cemal_r)
     lum = ca[:, :, :3].astype(np.float32).mean(axis=2)
     alpha = ca[:, :, 3].astype(np.float32)
     keep = (alpha > 40) & (lum < 160)
     out = np.zeros_like(ca)
-    out[keep, 0:3] = 18
+    out[keep, 0:3] = 12
     out[keep, 3] = 255
     a_img = Image.fromarray(out[:, :, 3]).filter(ImageFilter.GaussianBlur(1.2))
     out[:, :, 3] = np.array(a_img)
     cemal_r = Image.fromarray(out)
 
-    cx = x1 - cw - 24
-    cy = y1 - ch - 28
-    # soft lift shadow under figure
-    lift = Image.fromarray(out[:, :, 3]).filter(ImageFilter.GaussianBlur(12))
-    lift_a = np.array(lift).astype(np.float32)
-    lift_rgba = np.zeros((ch, cw, 4), dtype=np.uint8)
-    lift_rgba[:, :, 3] = np.clip(lift_a * 0.35, 0, 120).astype(np.uint8)
-    layer.alpha_composite(Image.fromarray(lift_rgba), (cx + 4, cy + 8))
+    cx = (W - cw) // 2
+    cy = y + gap_text_fig
+    # soft dark contact shadow only (no white plate / no white halo)
+    contact = Image.new("RGBA", (cw + 40, 50), (0, 0, 0, 0))
+    cd = ImageDraw.Draw(contact)
+    cd.ellipse((10, 8, cw + 20, 42), fill=(0, 0, 0, 70))
+    contact = contact.filter(ImageFilter.GaussianBlur(14))
+    layer.alpha_composite(contact, (cx - 10, cy + ch - 36))
     layer.alpha_composite(cemal_r, (cx, cy))
 
     return layer
@@ -438,21 +432,6 @@ def render() -> None:
     frame_bytes = W * H * 3
 
     print(f"Compositing {n_frames}f…", flush=True)
-    # Strong blur under frosted panel so glass feels real
-    bx0, by0, bx1, by1 = CARD
-    pad = 40
-    mx0, my0 = max(0, bx0 - pad), max(0, by0 - pad)
-    mx1, my1 = min(W, bx1 + pad), min(H, by1 + pad)
-    mw, mh = mx1 - mx0, my1 - my0
-    blur_mask = Image.new("L", (mw, mh), 0)
-    md = ImageDraw.Draw(blur_mask)
-    md.rounded_rectangle(
-        (bx0 - mx0, by0 - my0, bx1 - mx0, by1 - my0),
-        radius=36,
-        fill=255,
-    )
-    blur_mask = blur_mask.filter(ImageFilter.GaussianBlur(10))
-
     try:
         for fi in range(n_frames):
             raw = bed_proc.stdout.read(frame_bytes)
@@ -460,10 +439,6 @@ def render() -> None:
                 break
             frame = Image.frombytes("RGB", (W, H), raw).convert("RGBA")
             t = fi / FPS
-            region = frame.crop((mx0, my0, mx1, my1))
-            blurred = region.filter(ImageFilter.GaussianBlur(28))
-            fused = Image.composite(blurred, region, blur_mask)
-            frame.paste(fused, (mx0, my0))
             q = quote.copy()
             if t < 0.35:
                 a = t / 0.35

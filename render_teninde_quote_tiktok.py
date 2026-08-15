@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Teninde Kal — TikTok quote Short (ferah stock + Cemal Süreya quote/figure + ABONE CTA)."""
+"""Teninde Kal — TikTok quote Short (premium mural layout + ferah stock + ABONE CTA)."""
 
 from __future__ import annotations
 
-import math
 import subprocess
 import sys
 from pathlib import Path
@@ -15,43 +14,40 @@ AUDIO = Path("/workspace/arven_sole_tracks/Teninde_Kal.mp3")
 OUT = Path("/workspace/ArvenSole_TenindeKal_TIKTOK_QUOTE.mp4")
 ART = Path("/opt/cursor/artifacts")
 STOCK = Path("/tmp/teninde_quote")
-WORK = Path("/tmp/teninde_quote_short")
-CEMAL_SRC = Path("/opt/cursor/artifacts/assets/cemal_sureya_stencil.png")
-CEMAL_RGBA = STOCK / "cemal_rgba.png"
+WORK = Path("/tmp/teninde_quote_short_v3")
+CEMAL_SRC = Path("/opt/cursor/artifacts/assets/cemal_sureya_stencil_v2.png")
+CEMAL_RGBA = STOCK / "cemal_rgba_v2.png"
 FONT = Path("/workspace/fonts/Caveat-Bold.ttf")
-FONT_INTRO = Path("/workspace/fonts/Caveat-Bold.ttf")
-FONT_SANS = Path("/workspace/fonts/Outfit.ttf")
 if not FONT.exists():
     FONT = Path("/workspace/fonts/IndieFlower-Regular.ttf")
-if not FONT.exists():
-    FONT = Path("/usr/share/fonts/truetype/noto/NotoSansDisplay-Bold.ttf")
 FONT_DIR = Path("/usr/share/fonts/truetype/macos")
 ICON_THUMB = Path("/workspace/fonts/icons/thumb_up.png")
 ICON_BELL = Path("/workspace/fonts/icons/bell.png")
 
 W, H = 1080, 1920
 FPS = 24
-# Hottest chorus — Teninle kal bu gece
 T0 = 120.7
 T1 = 154.5
-
-CTA_Y = 1620  # söz bloğunun altında nefes payı
+CTA_Y = 1640
 LIKE_BLUE = (66, 133, 244)
 
 INTRO = "Cemal Süreya’nın dediği gibi;"
-QUOTE = (
-    "Seni, senin bile haberinin olmadığı şeylerden dolayı seviyorum, "
-    "sen boşuna saçlarını düzeltiyorsun…"
-)
+# Manual mural line breaks — left column, clean rhythm
+QUOTE_LINES = [
+    "“Seni, senin bile haberinin",
+    "olmadığı şeylerden dolayı",
+    "seviyorum, sen boşuna",
+    "saçlarını düzeltiyorsun…”",
+]
 
-# Ferah / warm intimacy — lyric-matched (stay close tonight)
+# Ferah cinematic beds matching intimacy / stay-close lyric
 SEGMENTS = [
-    (STOCK / "4840.mp4", 0.5, 9.0),    # rooftop golden sunset
-    (STOCK / "45857.mp4", 0.2, 4.8),   # holding hands — yakınlık
-    (STOCK / "4636.mp4", 0.8, 9.0),    # soft couple golden hour
-    (STOCK / "4511.mp4", 0.2, 5.5),   # bright window light
-    (STOCK / "4848.mp4", 0.3, 7.0),   # airy bright
-    (STOCK / "39963.mp4", 0.5, 8.0),  # warm romantic
+    (STOCK / "4840.mp4", 1.0, 8.5),     # golden sunset open air
+    (STOCK / "45857.mp4", 0.2, 4.8),    # holding hands
+    (STOCK / "45856.mp4", 0.5, 8.0),    # couple golden hour
+    (STOCK / "4841.mp4", 0.4, 7.5),     # bright airy
+    (STOCK / "4511.mp4", 0.2, 5.5),    # window light
+    (STOCK / "4624.mp4", 1.0, 8.0),    # warm romantic
 ]
 
 
@@ -62,25 +58,27 @@ def _font(path: Path, size: int) -> ImageFont.FreeTypeFont:
 def ensure_cemal() -> Image.Image:
     if CEMAL_RGBA.exists():
         return Image.open(CEMAL_RGBA).convert("RGBA")
-    im = Image.open(CEMAL_SRC).convert("RGBA")
+    src = CEMAL_SRC if CEMAL_SRC.exists() else Path("/opt/cursor/artifacts/assets/cemal_sureya_stencil.png")
+    im = Image.open(src).convert("RGBA")
     arr = np.array(im)
     lum = arr[:, :, :3].astype(np.float32).mean(axis=2)
-    alpha = np.where(lum > 230, 0, np.where(lum < 90, 255, np.clip(255 - lum, 0, 255))).astype(
-        np.uint8
-    )
-    arr[:, :, 3] = alpha
-    ys, xs = np.where(alpha > 20)
-    cut = arr[ys.min() : ys.max() + 1, xs.min() : xs.max() + 1]
+    alpha = np.where(lum > 200, 0, 255).astype(np.uint8)
+    out = np.zeros_like(arr)
+    out[alpha > 0, 0:3] = 12
+    out[:, :, 3] = alpha
+    ys, xs = np.where(alpha > 0)
+    cut = out[max(0, ys.min() - 2) : ys.max() + 3, max(0, xs.min() - 2) : xs.max() + 3]
     Image.fromarray(cut).save(CEMAL_RGBA)
     return Image.fromarray(cut)
 
 
 def to_vertical(src: Path, t0: float, dur: float, dest: Path) -> None:
+    # Center-weighted 9:16, lifted exposure (ferah), gentle vignette
     vf = (
         f"scale={W}:{H}:force_original_aspect_ratio=increase,"
         f"crop={W}:{H},"
-        "eq=brightness=0.12:saturation=1.06:contrast=1.03,"
-        "vignette=PI/10"
+        "eq=brightness=0.14:saturation=1.08:contrast=1.02,"
+        "vignette=PI/12"
     )
     subprocess.check_call(
         [
@@ -90,7 +88,7 @@ def to_vertical(src: Path, t0: float, dur: float, dest: Path) -> None:
             "-vf", vf,
             "-r", str(FPS),
             "-an",
-            "-c:v", "libx264", "-preset", "veryfast", "-crf", "17", "-pix_fmt", "yuv420p",
+            "-c:v", "libx264", "-preset", "veryfast", "-crf", "16", "-pix_fmt", "yuv420p",
             str(dest),
         ],
         stdout=subprocess.DEVNULL,
@@ -98,7 +96,7 @@ def to_vertical(src: Path, t0: float, dur: float, dest: Path) -> None:
     )
 
 
-def concat_xfade(paths: list[Path], durs: list[float], dest: Path, fade: float = 0.6) -> float:
+def concat_xfade(paths: list[Path], durs: list[float], dest: Path, fade: float = 0.55) -> float:
     if len(paths) == 1:
         dest.write_bytes(paths[0].read_bytes())
         return durs[0]
@@ -123,7 +121,7 @@ def concat_xfade(paths: list[Path], durs: list[float], dest: Path, fade: float =
             "-filter_complex", fc,
             "-map", "[vout]",
             "-r", str(FPS),
-            "-c:v", "libx264", "-preset", "veryfast", "-crf", "17", "-pix_fmt", "yuv420p",
+            "-c:v", "libx264", "-preset", "veryfast", "-crf", "16", "-pix_fmt", "yuv420p",
             str(dest),
         ],
         stdout=subprocess.DEVNULL,
@@ -132,77 +130,61 @@ def concat_xfade(paths: list[Path], durs: list[float], dest: Path, fade: float =
     return total
 
 
-def wrap_text(
-    draw: ImageDraw.ImageDraw, text: str, fnt: ImageFont.FreeTypeFont, max_w: int
-) -> list[str]:
-    words = text.split()
-    lines: list[str] = []
-    cur: list[str] = []
-    for word in words:
-        trial = (" ".join(cur + [word])).strip()
-        bb = draw.textbbox((0, 0), trial, font=fnt)
-        if bb[2] - bb[0] <= max_w:
-            cur.append(word)
-        else:
-            if cur:
-                lines.append(" ".join(cur))
-            cur = [word]
-    if cur:
-        lines.append(" ".join(cur))
-    return lines
-
-
 def make_quote_overlay(cemal: Image.Image) -> Image.Image:
-    """Mural layout (ref photo 2): black hand-lettering left, Cemal stencil bottom-right."""
+    """Clean mural card: frosted panel, black hand lettering left, Cemal bottom-right."""
     layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
 
-    # Soft light frosted panel (wall-like) — not dark cream lyric wash
-    panel = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    pd = ImageDraw.Draw(panel)
-    x0, y0, x1, y1 = 36, 300, W - 36, 1180
-    for i in range(28):
-        a = int(150 * (1 - i / 28) ** 1.4)
-        pd.rounded_rectangle(
-            (x0 - i, y0 - i, x1 + i, y1 + i),
-            radius=28 + i,
-            fill=(245, 240, 232, max(8, a // 8)),
-        )
-    pd.rounded_rectangle((x0, y0, x1, y1), radius=22, fill=(252, 248, 240, 128))
-    layer = Image.alpha_composite(layer, panel)
+    # Panel geometry
+    pad_x, top, bot = 48, 280, 1120
+    # Soft drop shadow
+    shadow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    sd = ImageDraw.Draw(shadow)
+    sd.rounded_rectangle((pad_x + 10, top + 14, W - pad_x + 10, bot + 14), radius=28, fill=(0, 0, 0, 55))
+    shadow = shadow.filter(ImageFilter.GaussianBlur(18))
+    layer = Image.alpha_composite(layer, shadow)
+
+    # Frosted white card
+    card = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    cd = ImageDraw.Draw(card)
+    cd.rounded_rectangle(
+        (pad_x, top, W - pad_x, bot),
+        radius=26,
+        fill=(255, 252, 247, 188),
+    )
+    # inner hairline
+    cd.rounded_rectangle(
+        (pad_x + 2, top + 2, W - pad_x - 2, bot - 2),
+        radius=24,
+        outline=(255, 255, 255, 90),
+        width=2,
+    )
+    layer = Image.alpha_composite(layer, card)
     d = ImageDraw.Draw(layer)
 
-    ink = (18, 16, 14, 255)
-    ink_soft = (28, 24, 20, 245)
-    intro_fnt = _font(FONT_INTRO if FONT_INTRO.exists() else FONT, 36)
-    quote_fnt = _font(FONT, 54)
+    ink = (16, 14, 12, 255)
+    intro_fnt = _font(FONT, 38)
+    quote_fnt = _font(FONT, 52)
 
-    # Intro — top-left (mural)
-    ix, iy = 64, 360
-    d.text((ix + 1, iy + 1), INTRO, font=intro_fnt, fill=(0, 0, 0, 40))
-    d.text((ix, iy), INTRO, font=intro_fnt, fill=ink_soft)
+    # Left text column
+    tx = pad_x + 40
+    ty = top + 48
+    d.text((tx + 1, ty + 1), INTRO, font=intro_fnt, fill=(0, 0, 0, 35))
+    d.text((tx, ty), INTRO, font=intro_fnt, fill=ink)
 
-    # Quote — left-aligned black ink; right side reserved for Cemal
-    q_lines = wrap_text(d, f"“{QUOTE}”", quote_fnt, max_w=620)
-    line_gap = 10
-    y = iy + 58
-    for line in q_lines:
-        d.text((ix + 1, y + 1), line, font=quote_fnt, fill=(0, 0, 0, 55))
-        d.text((ix, y), line, font=quote_fnt, fill=ink)
+    y = ty + 62
+    gap = 8
+    for line in QUOTE_LINES:
+        d.text((tx + 1, y + 1), line, font=quote_fnt, fill=(0, 0, 0, 40))
+        d.text((tx, y), line, font=quote_fnt, fill=ink)
         bb = d.textbbox((0, 0), line, font=quote_fnt)
-        y += (bb[3] - bb[1]) + line_gap
+        y += (bb[3] - bb[1]) + gap
 
-    # Cemal — bottom-right of panel, overlaps quote space like mural
-    cw = 380
-    ch = int(cemal.height * (cw / cemal.width))
+    # Cemal — bottom-right inside card, clear of text
+    cw = 360
+    ch = int(cemal.height * (cw / max(1, cemal.width)))
     cemal_r = cemal.resize((cw, ch), Image.Resampling.LANCZOS)
-    ca = np.array(cemal_r)
-    mask = ca[:, :, 3] > 40
-    ca[mask, 0:3] = 12
-    ca[mask, 3] = 255
-    ca[~mask, 3] = 0
-    cemal_r = Image.fromarray(ca)
-    cx = W - cw - 52
-    cy = y1 - ch - 28
+    cx = W - pad_x - cw - 28
+    cy = bot - ch - 36
     layer.alpha_composite(cemal_r, (cx, cy))
 
     return layer
@@ -324,13 +306,12 @@ def render() -> None:
     STOCK.mkdir(parents=True, exist_ok=True)
 
     clip_dur = T1 - T0
-    print(f"TikTok quote 9:16  {T0:.2f}→{T1:.2f} ({clip_dur:.2f}s)", flush=True)
+    print(f"TikTok quote v3  {T0:.2f}→{T1:.2f} ({clip_dur:.2f}s)", flush=True)
 
-    fade = 0.6
+    fade = 0.55
     segs = list(SEGMENTS)
     raw_sum = sum(d for _, _, d in segs)
-    n_fades = len(segs) - 1
-    scale = (clip_dur + fade * n_fades) / raw_sum
+    scale = (clip_dur + fade * (len(segs) - 1)) / raw_sum
     segs = [(p, s, d * scale) for p, s, d in segs]
 
     vpaths, durs = [], []
@@ -365,7 +346,7 @@ def render() -> None:
             "ffmpeg", "-y", "-stream_loop", loop, "-i", str(bed),
             "-t", f"{clip_dur:.3f}",
             "-vf", f"fps={FPS},scale={W}:{H}",
-            "-c:v", "libx264", "-preset", "veryfast", "-crf", "17", "-pix_fmt", "yuv420p",
+            "-c:v", "libx264", "-preset", "veryfast", "-crf", "16", "-pix_fmt", "yuv420p",
             str(bed2),
         ],
         stdout=subprocess.DEVNULL,
@@ -385,12 +366,10 @@ def render() -> None:
         stderr=subprocess.DEVNULL,
     )
 
-    cemal = ensure_cemal()
-    quote = make_quote_overlay(cemal)
+    quote = make_quote_overlay(ensure_cemal())
     quote_path = WORK / "quote.png"
     quote.save(quote_path)
 
-    # Composite quote + animated CTA frame-by-frame (CTA needs time)
     n_frames = int(round(clip_dur * FPS))
     ff_log = WORK / "ffmpeg.log"
     cmd = [
@@ -398,7 +377,7 @@ def render() -> None:
         "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r", str(FPS), "-i", "-",
         "-i", str(audio),
         "-map", "0:v", "-map", "1:a",
-        "-c:v", "libx264", "-preset", "veryfast", "-crf", "17", "-pix_fmt", "yuv420p",
+        "-c:v", "libx264", "-preset", "medium", "-crf", "16", "-pix_fmt", "yuv420p",
         "-c:a", "aac", "-b:a", "192k",
         "-shortest", "-movflags", "+faststart",
         str(OUT),
@@ -407,14 +386,16 @@ def render() -> None:
     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stderr=ff_err)
     assert proc.stdin is not None
 
-    # Decode bed frames via ffmpeg pipe
-    bed_cmd = [
-        "ffmpeg", "-v", "error",
-        "-i", str(bed2),
-        "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r", str(FPS),
-        "-",
-    ]
-    bed_proc = subprocess.Popen(bed_cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    bed_proc = subprocess.Popen(
+        [
+            "ffmpeg", "-v", "error",
+            "-i", str(bed2),
+            "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r", str(FPS),
+            "-",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+    )
     assert bed_proc.stdout is not None
     frame_bytes = W * H * 3
 
@@ -425,16 +406,15 @@ def render() -> None:
             if len(raw) < frame_bytes:
                 break
             frame = Image.frombytes("RGB", (W, H), raw).convert("RGBA")
-            # quote fade
             t = fi / FPS
             q = quote.copy()
-            if t < 0.4:
-                a = t / 0.4
+            if t < 0.35:
+                a = t / 0.35
                 qa = np.array(q)
                 qa[:, :, 3] = (qa[:, :, 3].astype(np.float32) * a).astype(np.uint8)
                 q = Image.fromarray(qa)
-            elif t > clip_dur - 1.0:
-                a = max(0.0, (clip_dur - t) / 1.0)
+            elif t > clip_dur - 0.9:
+                a = max(0.0, (clip_dur - t) / 0.9)
                 qa = np.array(q)
                 qa[:, :, 3] = (qa[:, :, 3].astype(np.float32) * a).astype(np.uint8)
                 q = Image.fromarray(qa)

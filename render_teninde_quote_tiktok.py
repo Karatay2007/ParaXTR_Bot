@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Teninde Kal — TikTok quote Short (centered mural text + Cemal below, no white plate)."""
+"""Teninde Kal — TikTok quote Short (Cormorant serif quote + Cemal below)."""
 
 from __future__ import annotations
 
@@ -17,9 +17,11 @@ STOCK = Path("/tmp/teninde_quote")
 WORK = Path("/tmp/teninde_quote_short_v3")
 CEMAL_SRC = Path("/opt/cursor/artifacts/assets/cemal_sureya_stencil_v2.png")
 CEMAL_RGBA = STOCK / "cemal_rgba_v2.png"
-FONT = Path("/workspace/fonts/Caveat-Bold.ttf")
-if not FONT.exists():
-    FONT = Path("/workspace/fonts/IndieFlower-Regular.ttf")
+FONT_QUOTE = Path("/workspace/fonts/CormorantGaramond-SemiBoldItalic.ttf")
+FONT_INTRO = Path("/workspace/fonts/CormorantGaramond-SemiBold.ttf")
+if not FONT_QUOTE.exists():
+    FONT_QUOTE = Path("/workspace/fonts/Caveat-Bold.ttf")
+    FONT_INTRO = FONT_QUOTE
 FONT_DIR = Path("/usr/share/fonts/truetype/macos")
 ICON_THUMB = Path("/workspace/fonts/icons/thumb_up.png")
 ICON_BELL = Path("/workspace/fonts/icons/bell.png")
@@ -31,21 +33,15 @@ T1 = 154.5
 CTA_Y = 1640
 LIKE_BLUE = (66, 133, 244)
 
-INTRO = "Cemal Süreya’nın dediği gibi;"
-# Manual mural line breaks — left column, clean rhythm
-# Exact mural line breaks (reference wall photo)
+INTRO_LINES = [
+    "Cemal Süreya’nın dediği gibi;",
+]
 QUOTE_LINES = [
     "“Seni, senin bile",
-    "haberinin olmadığı",
-    "şeylerden dolayı",
+    "haberinin olmadığı şeylerden dolayı",
     "seviyorum,",
-    "sen boşuna",
-    "saçlarını",
+    "sen boşuna saçlarını",
     "düzeltiyorsun…”",
-]
-INTRO_LINES = [
-    "Cemal Süreya’nın",
-    "dediği gibi;",
 ]
 
 # Ferah cinematic beds matching intimacy / stay-close lyric
@@ -140,40 +136,39 @@ def concat_xfade(paths: list[Path], durs: list[float], dest: Path, fade: float =
 
 
 def make_quote_overlay(cemal: Image.Image) -> Image.Image:
-    """Centered black mural text, Cemal figure directly under — no white plate."""
+    """Centered elegant serif quote, Cemal directly under — no white plate."""
     layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(layer)
 
-    ink = (8, 6, 5, 255)
-    intro_fnt = _font(FONT, 46)
-    quote_fnt = _font(FONT, 54)
+    ink = (12, 10, 8, 255)
+    intro_fnt = _font(FONT_INTRO, 38)
+    quote_fnt = _font(FONT_QUOTE, 52)
 
     def line_size(text: str, fnt) -> tuple[int, int]:
         bb = d.textbbox((0, 0), text, font=fnt)
         return bb[2] - bb[0], bb[3] - bb[1]
 
-    def draw_centered(y: int, text: str, fnt) -> int:
+    def draw_centered(y: int, text: str, fnt, letter_ink=ink) -> int:
         tw, th = line_size(text, fnt)
         x = (W - tw) // 2
-        # thin cream rim only — readability, not a white box
+        # soft cream rim for readability on bright stock
         for ox, oy in ((-2, 0), (2, 0), (0, -2), (0, 2), (-1, -1), (1, 1), (-1, 1), (1, -1)):
-            d.text((x + ox, y + oy), text, font=fnt, fill=(255, 248, 236, 170))
-        d.text((x + 1, y + 2), text, font=fnt, fill=(0, 0, 0, 55))
-        d.text((x, y), text, font=fnt, fill=ink)
+            d.text((x + ox, y + oy), text, font=fnt, fill=(255, 248, 236, 175))
+        d.text((x + 1, y + 2), text, font=fnt, fill=(0, 0, 0, 50))
+        d.text((x, y), text, font=fnt, fill=letter_ink)
         return th
 
-    # Measure stack height so text + figure fit above CTA with clear gap
-    cw = 340
+    cw = 320
     ch = int(cemal.height * (cw / max(1, cemal.width)))
-    gap_text_fig = 36
+    gap_text_fig = 40
     gap_fig_cta = 120
 
     lines: list[tuple[str, ImageFont.FreeTypeFont, int]] = []
     for line in INTRO_LINES:
-        lines.append((line, intro_fnt, 2))
-    lines.append(("", intro_fnt, 14))  # spacer after intro
+        lines.append((line, intro_fnt, 6))
+    lines.append(("", intro_fnt, 18))
     for line in QUOTE_LINES:
-        lines.append((line, quote_fnt, 4))
+        lines.append((line, quote_fnt, 10))
 
     text_h = 0
     for text, fnt, pad in lines:
@@ -184,9 +179,8 @@ def make_quote_overlay(cemal: Image.Image) -> Image.Image:
         text_h += th + pad
 
     block_h = text_h + gap_text_fig + ch
-    # Center the whole block (text + figure) in the upper band above CTA
     top_band = CTA_Y - gap_fig_cta
-    y0 = max(160, (top_band - block_h) // 2)
+    y0 = max(180, (top_band - block_h) // 2)
 
     y = y0
     for text, fnt, pad in lines:
@@ -196,7 +190,15 @@ def make_quote_overlay(cemal: Image.Image) -> Image.Image:
         h = draw_centered(y, text, fnt)
         y += h + pad
 
-    # Cemal — centered directly under the last quote line
+    # thin divider line above Cemal
+    div_y = y + 8
+    div_w = 72
+    d.line(
+        ((W - div_w) // 2, div_y, (W + div_w) // 2, div_y),
+        fill=(20, 16, 12, 180),
+        width=2,
+    )
+
     cemal_r = cemal.resize((cw, ch), Image.Resampling.LANCZOS)
     ca = np.array(cemal_r)
     lum = ca[:, :, :3].astype(np.float32).mean(axis=2)
@@ -211,7 +213,6 @@ def make_quote_overlay(cemal: Image.Image) -> Image.Image:
 
     cx = (W - cw) // 2
     cy = y + gap_text_fig
-    # soft dark contact shadow only (no white plate / no white halo)
     contact = Image.new("RGBA", (cw + 40, 50), (0, 0, 0, 0))
     cd = ImageDraw.Draw(contact)
     cd.ellipse((10, 8, cw + 20, 42), fill=(0, 0, 0, 70))

@@ -18,10 +18,13 @@ STOCK = Path("/tmp/teninde_quote")
 WORK = Path("/tmp/teninde_quote_short")
 CEMAL_SRC = Path("/opt/cursor/artifacts/assets/cemal_sureya_stencil.png")
 CEMAL_RGBA = STOCK / "cemal_rgba.png"
-FONT = Path("/workspace/fonts/CormorantGaramond-SemiBoldItalic.ttf")
+FONT = Path("/workspace/fonts/Caveat-Bold.ttf")
+FONT_INTRO = Path("/workspace/fonts/Caveat-Bold.ttf")
 FONT_SANS = Path("/workspace/fonts/Outfit.ttf")
 if not FONT.exists():
-    FONT = Path("/usr/share/fonts/truetype/noto/NotoSerifDisplay-Italic.ttf")
+    FONT = Path("/workspace/fonts/IndieFlower-Regular.ttf")
+if not FONT.exists():
+    FONT = Path("/usr/share/fonts/truetype/noto/NotoSansDisplay-Bold.ttf")
 FONT_DIR = Path("/usr/share/fonts/truetype/macos")
 ICON_THUMB = Path("/workspace/fonts/icons/thumb_up.png")
 ICON_BELL = Path("/workspace/fonts/icons/bell.png")
@@ -32,7 +35,7 @@ FPS = 24
 T0 = 120.7
 T1 = 154.5
 
-CTA_Y = 1580  # below quote with breathing room
+CTA_Y = 1620  # söz bloğunun altında nefes payı
 LIKE_BLUE = (66, 133, 244)
 
 INTRO = "Cemal Süreya’nın dediği gibi;"
@@ -150,63 +153,59 @@ def wrap_text(
 
 
 def make_quote_overlay(cemal: Image.Image) -> Image.Image:
+    """Mural layout (ref photo 2): black hand-lettering left, Cemal stencil bottom-right."""
     layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    # Soft center wash — readable, not crushed
-    wash = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    wd = ImageDraw.Draw(wash)
-    top, bot = 360, 1280
-    for y in range(top, bot):
-        p = abs((y - (top + bot) / 2) / ((bot - top) / 2))
-        a = int(110 * max(0.0, 1.0 - p**1.35))
-        wd.line([(36, y), (W - 36, y)], fill=(0, 0, 0, a))
-    layer = Image.alpha_composite(layer, wash)
+
+    # Soft light frosted panel (wall-like) — not dark cream lyric wash
+    panel = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    pd = ImageDraw.Draw(panel)
+    x0, y0, x1, y1 = 36, 300, W - 36, 1180
+    for i in range(28):
+        a = int(150 * (1 - i / 28) ** 1.4)
+        pd.rounded_rectangle(
+            (x0 - i, y0 - i, x1 + i, y1 + i),
+            radius=28 + i,
+            fill=(245, 240, 232, max(8, a // 8)),
+        )
+    pd.rounded_rectangle((x0, y0, x1, y1), radius=22, fill=(252, 248, 240, 128))
+    layer = Image.alpha_composite(layer, panel)
     d = ImageDraw.Draw(layer)
 
-    cream = (248, 240, 226, 255)
-    muted = (220, 210, 195, 240)
-    intro_fnt = _font(FONT_SANS if FONT_SANS.exists() else FONT, 28)
-    quote_fnt = _font(FONT, 46)
+    ink = (18, 16, 14, 255)
+    ink_soft = (28, 24, 20, 245)
+    intro_fnt = _font(FONT_INTRO if FONT_INTRO.exists() else FONT, 36)
+    quote_fnt = _font(FONT, 54)
 
-    # Intro
-    intro_bb = d.textbbox((0, 0), INTRO, font=intro_fnt)
-    ix = (W - (intro_bb[2] - intro_bb[0])) // 2
-    iy = 520
-    for ox, oy in ((2, 2), (1, 1)):
-        d.text((ix + ox, iy + oy), INTRO, font=intro_fnt, fill=(0, 0, 0, 160))
-    d.text((ix, iy), INTRO, font=intro_fnt, fill=muted)
+    # Intro — top-left (mural)
+    ix, iy = 64, 360
+    d.text((ix + 1, iy + 1), INTRO, font=intro_fnt, fill=(0, 0, 0, 40))
+    d.text((ix, iy), INTRO, font=intro_fnt, fill=ink_soft)
 
-    # Quote block (left-biased to leave room for Cemal on right-bottom of text)
-    q_lines = wrap_text(d, f"“{QUOTE}”", quote_fnt, max_w=W - 220)
-    line_gap = 12
-    heights, widths = [], []
+    # Quote — left-aligned black ink; right side reserved for Cemal
+    q_lines = wrap_text(d, f"“{QUOTE}”", quote_fnt, max_w=620)
+    line_gap = 10
+    y = iy + 58
     for line in q_lines:
+        d.text((ix + 1, y + 1), line, font=quote_fnt, fill=(0, 0, 0, 55))
+        d.text((ix, y), line, font=quote_fnt, fill=ink)
         bb = d.textbbox((0, 0), line, font=quote_fnt)
-        widths.append(bb[2] - bb[0])
-        heights.append(bb[3] - bb[1])
-    block_h = sum(heights) + line_gap * max(0, len(q_lines) - 1)
-    y = iy + 56
-    for i, line in enumerate(q_lines):
-        x = 72
-        for ox, oy in ((2, 2), (3, 3)):
-            d.text((x + ox, y + oy), line, font=quote_fnt, fill=(0, 0, 0, 170))
-        d.text((x, y), line, font=quote_fnt, fill=cream)
-        y += heights[i] + line_gap
+        y += (bb[3] - bb[1]) + line_gap
 
-    # Cemal figure — lower-right of quote block (like wall mural)
-    cw = 340
+    # Cemal — bottom-right of panel, overlaps quote space like mural
+    cw = 380
     ch = int(cemal.height * (cw / cemal.width))
     cemal_r = cemal.resize((cw, ch), Image.Resampling.LANCZOS)
-    # slight opacity so it sits on footage
     ca = np.array(cemal_r)
-    ca[:, :, 3] = (ca[:, :, 3].astype(np.float32) * 0.92).astype(np.uint8)
+    mask = ca[:, :, 3] > 40
+    ca[mask, 0:3] = 12
+    ca[mask, 3] = 255
+    ca[~mask, 3] = 0
     cemal_r = Image.fromarray(ca)
-    cx = W - cw - 48
-    cy = min(y - 40, 1180 - ch)
-    cy = max(cy, y - ch + 20)
+    cx = W - cw - 52
+    cy = y1 - ch - 28
     layer.alpha_composite(cemal_r, (cx, cy))
 
-    bloom = layer.filter(ImageFilter.GaussianBlur(0.6))
-    return Image.alpha_composite(bloom, layer)
+    return layer
 
 
 def _draw_mouse(d: ImageDraw.ImageDraw, x: int, y: int, press: float = 0.0) -> None:

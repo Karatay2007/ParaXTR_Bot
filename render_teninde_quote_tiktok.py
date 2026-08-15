@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Teninde Kal — TikTok quote Short (bold readable Inter + Cemal below)."""
+"""Teninde Kal — TikTok quote Short (Cormorant + deep shadow, Cemal below)."""
 
 from __future__ import annotations
 
@@ -17,12 +17,12 @@ STOCK = Path("/tmp/teninde_quote")
 WORK = Path("/tmp/teninde_quote_short_v3")
 CEMAL_SRC = Path("/opt/cursor/artifacts/assets/cemal_sureya_stencil_v2.png")
 CEMAL_RGBA = STOCK / "cemal_rgba_v2.png"
-FONT_DIR = Path("/usr/share/fonts/truetype/macos")
-FONT_QUOTE = FONT_DIR / "Inter-Bold.ttf"
-FONT_INTRO = FONT_DIR / "Inter-SemiBold.ttf"
+FONT_QUOTE = Path("/workspace/fonts/CormorantGaramond-SemiBoldItalic.ttf")
+FONT_INTRO = Path("/workspace/fonts/CormorantGaramond-SemiBold.ttf")
 if not FONT_QUOTE.exists():
-    FONT_QUOTE = Path("/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf")
+    FONT_QUOTE = Path("/workspace/fonts/Caveat-Bold.ttf")
     FONT_INTRO = FONT_QUOTE
+FONT_DIR = Path("/usr/share/fonts/truetype/macos")
 ICON_THUMB = Path("/workspace/fonts/icons/thumb_up.png")
 ICON_BELL = Path("/workspace/fonts/icons/bell.png")
 
@@ -38,11 +38,10 @@ INTRO_LINES = [
 ]
 QUOTE_LINES = [
     "“Seni, senin bile",
-    "haberinin olmadığı",
-    "şeylerden dolayı",
+    "haberinin olmadığı şeylerden dolayı",
     "seviyorum,",
-    "sen boşuna",
-    "saçlarını düzeltiyorsun…”",
+    "sen boşuna saçlarını",
+    "düzeltiyorsun…”",
 ]
 
 # Ferah cinematic beds matching intimacy / stay-close lyric
@@ -137,48 +136,54 @@ def concat_xfade(paths: list[Path], durs: list[float], dest: Path, fade: float =
 
 
 def make_quote_overlay(cemal: Image.Image) -> Image.Image:
-    """Centered bold readable quote, Cemal under — high contrast, no plate."""
+    """Cormorant italic quote + heavy drop shadow for readability; Cemal under."""
     layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(layer)
 
-    # Cream fill + hard black stroke = readable on bright OR dark footage
-    fill = (255, 252, 245, 255)
-    stroke = (8, 6, 5, 255)
-    intro_fnt = _font(FONT_INTRO, 34)
-    quote_fnt = _font(FONT_QUOTE, 48)
+    ink = (255, 252, 245, 255)
+    intro_fnt = _font(FONT_INTRO, 36)
+    quote_fnt = _font(FONT_QUOTE, 56)
 
     def line_size(text: str, fnt) -> tuple[int, int]:
         bb = d.textbbox((0, 0), text, font=fnt)
         return bb[2] - bb[0], bb[3] - bb[1]
 
-    def draw_centered(y: int, text: str, fnt, stroke_w: int = 4) -> int:
+    def draw_centered(y: int, text: str, fnt) -> int:
         tw, th = line_size(text, fnt)
         x = (W - tw) // 2
-        # hard outline ring
-        for ox in range(-stroke_w, stroke_w + 1):
-            for oy in range(-stroke_w, stroke_w + 1):
-                if ox * ox + oy * oy > stroke_w * stroke_w:
-                    continue
-                if ox == 0 and oy == 0:
-                    continue
-                d.text((x + ox, y + oy), text, font=fnt, fill=stroke)
-        d.text((x, y), text, font=fnt, fill=fill)
+        # soft blurred shadow under glyphs (readability on bright stock)
+        shadow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        sd = ImageDraw.Draw(shadow)
+        for ox, oy in ((0, 3), (0, 5), (2, 4), (-2, 4), (0, 7)):
+            sd.text((x + ox, y + oy), text, font=fnt, fill=(0, 0, 0, 120))
+        for ox, oy in (
+            (-4, 0), (4, 0), (0, -4), (0, 4),
+            (-3, -3), (3, 3), (-3, 3), (3, -3),
+            (-5, 2), (5, -2), (2, 5), (-2, -5),
+        ):
+            sd.text((x + ox, y + oy), text, font=fnt, fill=(0, 0, 0, 80))
+        layer.alpha_composite(shadow.filter(ImageFilter.GaussianBlur(3)))
+        # crisp dark rim then cream fill
+        dd = ImageDraw.Draw(layer)
+        for ox, oy in ((-2, 0), (2, 0), (0, -2), (0, 2), (-1, -1), (1, 1), (-1, 1), (1, -1)):
+            dd.text((x + ox, y + oy), text, font=fnt, fill=(0, 0, 0, 210))
+        dd.text((x, y), text, font=fnt, fill=ink)
         return th
 
-    cw = 280
+    cw = 300
     ch = int(cemal.height * (cw / max(1, cemal.width)))
-    gap_text_fig = 48
+    gap_text_fig = 56
     gap_fig_cta = 120
 
-    lines: list[tuple[str, ImageFont.FreeTypeFont, int, int]] = []
+    lines: list[tuple[str, ImageFont.FreeTypeFont, int]] = []
     for line in INTRO_LINES:
-        lines.append((line, intro_fnt, 8, 3))
-    lines.append(("", intro_fnt, 22, 0))
+        lines.append((line, intro_fnt, 8))
+    lines.append(("", intro_fnt, 20))
     for line in QUOTE_LINES:
-        lines.append((line, quote_fnt, 16, 4))
+        lines.append((line, quote_fnt, 14))
 
     text_h = 0
-    for text, fnt, pad, _sw in lines:
+    for text, fnt, pad in lines:
         if not text:
             text_h += pad
             continue
@@ -187,28 +192,23 @@ def make_quote_overlay(cemal: Image.Image) -> Image.Image:
 
     block_h = text_h + gap_text_fig + ch
     top_band = CTA_Y - gap_fig_cta
-    y0 = max(170, (top_band - block_h) // 2)
+    y0 = max(180, (top_band - block_h) // 2)
 
     y = y0
-    for text, fnt, pad, sw in lines:
+    for text, fnt, pad in lines:
         if not text:
             y += pad
             continue
-        h = draw_centered(y, text, fnt, stroke_w=sw)
+        h = draw_centered(y, text, fnt)
         y += h + pad
 
-    # thin divider above Cemal
-    div_y = y + 6
-    div_w = 64
+    div_y = y + 8
+    div_w = 72
+    d = ImageDraw.Draw(layer)
     d.line(
         ((W - div_w) // 2, div_y, (W + div_w) // 2, div_y),
         fill=(255, 252, 245, 220),
-        width=3,
-    )
-    d.line(
-        ((W - div_w) // 2 + 1, div_y + 1, (W + div_w) // 2 + 1, div_y + 1),
-        fill=(8, 6, 5, 160),
-        width=3,
+        width=2,
     )
 
     cemal_r = cemal.resize((cw, ch), Image.Resampling.LANCZOS)
